@@ -1,4 +1,4 @@
-# RockLib.UniversalMemberAccessor [![Build status](https://ci.appveyor.com/api/projects/status/oaebm3r0g1hcc8nx?svg=true)](https://ci.appveyor.com/project/bfriesen/rocklib-core-2eygt)
+# RockLib.UniversalMemberAccessor [![Build status](https://ci.appveyor.com/api/projects/status/5fiuw7n89d8qubf1?svg=true)](https://ci.appveyor.com/project/RockLib/rocklib-universalmemberaccessor)
 
 *Defines a dynamic proxy object that enables easy access to non-public members.*
 
