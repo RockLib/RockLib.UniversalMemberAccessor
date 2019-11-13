@@ -65,17 +65,45 @@ namespace RockLib.Dynamic
             var initialInstanceValueType = readonlyFields.InstanceValueType;
             var initialInstanceReferenceType = readonlyFields.InstanceReferenceType;
 
-            // ReSharper disable PossibleNullReferenceException
-            staticValueTypeField.SetValue(null, 9);
-            staticReferenceTypeField.SetValue(null, "Z");
-            instanceValueTypeField.SetValue(readonlyFields, 8);
-            instanceReferenceTypeField.SetValue(readonlyFields, "Y");
-            // ReSharper restore PossibleNullReferenceException
+            try
+            {
+                staticValueTypeField.SetValue(null, 9);
+                _canSetReadonlyStaticValueType = (ReadonlyFields.StaticValueType != initialStaticValueType);
+            }
+            catch
+            {
+                _canSetReadonlyStaticValueType = false;
+            }
 
-            _canSetReadonlyStaticValueType = (ReadonlyFields.StaticValueType != initialStaticValueType);
-            _canSetReadonlyStaticReferenceType = (ReadonlyFields.StaticReferenceType != initialStaticReferenceType);
-            _canSetReadonlyInstanceValueType = (readonlyFields.InstanceValueType != initialInstanceValueType);
-            _canSetReadonlyInstanceReferenceType = (readonlyFields.InstanceReferenceType != initialInstanceReferenceType);
+            try
+            {
+                staticReferenceTypeField.SetValue(null, "Z");
+                _canSetReadonlyStaticReferenceType = (ReadonlyFields.StaticReferenceType != initialStaticReferenceType);
+            }
+            catch
+            {
+                _canSetReadonlyStaticReferenceType = false;
+            }
+
+            try
+            {
+                instanceValueTypeField.SetValue(readonlyFields, 8);
+                _canSetReadonlyInstanceValueType = (readonlyFields.InstanceValueType != initialInstanceValueType);
+            }
+            catch
+            {
+                _canSetReadonlyInstanceValueType = false;
+            }
+
+            try
+            {
+                instanceReferenceTypeField.SetValue(readonlyFields, "Y");
+                _canSetReadonlyInstanceReferenceType = (readonlyFields.InstanceReferenceType != initialInstanceReferenceType);
+            }
+            catch
+            {
+                _canSetReadonlyInstanceReferenceType = false;
+            }
 
             // Need to use some reflection in order to get the generic type arguments supplied by the caller.
             // Note that Visual Basic's late binding does not support generic type arguments.
@@ -85,7 +113,7 @@ namespace RockLib.Dynamic
             {
                 var property = cSharpBinderType.GetProperty("TypeArguments");
 
-                if (property != null && property.PropertyType == typeof(IList<Type>))
+                if (property != null && typeof(IList<Type>).IsAssignableFrom(property.PropertyType))
                 {
                     var binderParameter = Expression.Parameter(typeof(InvokeMemberBinder), "binder");
 
