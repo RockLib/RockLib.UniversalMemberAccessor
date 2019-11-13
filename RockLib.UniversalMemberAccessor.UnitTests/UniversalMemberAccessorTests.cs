@@ -996,6 +996,19 @@ namespace RockLib.Dynamic.UnitTests
             Assert.That(bar, Is.EqualTo(fieldValue));
         }
 
+#if NETCOREAPP3_0
+        [Test]
+        public void CannotSetReadonlyReferenceTypeStaticField()
+        {
+            var type = Create.Class("Foo", Define.Field("_bar", typeof(string), true, true));
+
+            var foo = type.Unlock();
+
+            Assert.That(() => foo._bar = "abc",
+                Throws.InstanceOf<NotSupportedException>().With.Message.EqualTo(
+                "The current runtime does not allow the (illegal) changing of readonly static reference-type fields."));
+        }
+#else
         [Test]
         public void CanSetReadonlyReferenceTypeStaticField()
         {
@@ -1008,8 +1021,9 @@ namespace RockLib.Dynamic.UnitTests
             var bar = foo._bar;
             Assert.That(bar, Is.EqualTo("abc"));
         }
+#endif
 
-#if NET40
+#if NET40 || NETCOREAPP3_0
         [Test]
         public void CannotSetReadonlyValueTypeStaticField()
         {
