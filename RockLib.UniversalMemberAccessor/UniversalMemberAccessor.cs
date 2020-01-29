@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using Microsoft.CSharp.RuntimeBinder;
 
 namespace RockLib.Dynamic
@@ -424,8 +425,26 @@ namespace RockLib.Dynamic
                 CreateCreateInstanceFunc);
         }
 
+        private class TaskTypeComparer : IComparer<Type>
+        {
+            public int Compare(Type x, Type y)
+            {
+                if (x.IsAssignableFrom(y))
+                    return 1;
+                if (y.IsAssignableFrom(x))
+                    return -1;
+                return 0;
+            }
+        }
+
         private static IList<Candidate> GetBetterMethods(Type[] argTypes, IList<Candidate> legalCandidates)
         {
+            if (legalCandidates.All(c => typeof(Task).IsAssignableFrom(c.Method.DeclaringType) && c.Method.Name == "GetAwaiter" && c.Method.GetParameters().Length == 0))
+            {
+                // return the candidate whose declaringtype is the most-derived
+                return legalCandidates.OrderBy(x => x.Method.DeclaringType, new TaskTypeComparer()).Take(1).ToList();
+            }
+
             var isBestCandidate = Enumerable.Repeat(true, legalCandidates.Count).ToList();
 
             for (int i = 0; i < legalCandidates.Count; i++)
