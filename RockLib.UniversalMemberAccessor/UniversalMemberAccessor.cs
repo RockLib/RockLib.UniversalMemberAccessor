@@ -984,21 +984,15 @@ namespace RockLib.Dynamic
                 yield return Tuple.Create(type, closedGenericType);
             }
             
-            if (type.IsGenericType)
+            if (type.IsGenericType && closedGenericType.IsGenericType)
             {
-                if (!closedGenericType.IsGenericType)
-                    yield break;
+                var genericArgs = type.GetGenericArguments();
+                var closedGenericArgs = closedGenericType.GetGenericArguments();
 
-                Debug.Assert(closedGenericType.IsGenericType);
-
-                var genericArguments = type.GetGenericArguments()
-                    .Zip(closedGenericType.GetGenericArguments(), (t, c) => Tuple.Create(t, c));
-
-                foreach (var arg in genericArguments)
-                {
-                    foreach (var t in GetGenericParameters(arg.Item1, arg.Item2))
-                        yield return t;
-                }
+                if (genericArgs.Length == closedGenericArgs.Length)
+                    for (int i = 0; i < genericArgs.Length; i++)
+                        foreach (var t in GetGenericParameters(genericArgs[i], closedGenericArgs[i]))
+                            yield return t;
             }
         }
 
