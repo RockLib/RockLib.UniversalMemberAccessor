@@ -976,6 +976,26 @@ namespace RockLib.Dynamic
             return args => Get(func(UnwrapArgs(args)));
         }
 
+        private static IEnumerable<Tuple<Type, Type>> GetGenericParameters(Type type, Type closedGenericType)
+        {
+            if (type.IsGenericParameter)
+            {
+                Debug.Assert(!closedGenericType.IsGenericParameter);
+                yield return Tuple.Create(type, closedGenericType);
+            }
+            
+            if (type.IsGenericType && closedGenericType.IsGenericType)
+            {
+                var genericArgs = type.GetGenericArguments();
+                var closedGenericArgs = closedGenericType.GetGenericArguments();
+
+                if (genericArgs.Length == closedGenericArgs.Length)
+                    for (int i = 0; i < genericArgs.Length; i++)
+                        foreach (var t in GetGenericParameters(genericArgs[i], closedGenericArgs[i]))
+                            yield return t;
+            }
+        }
+
         private static Func<object, object[], object> CreateInvokeMethodFunc(
             InvokeMethodDefinition definition)
         {
@@ -1073,15 +1093,19 @@ namespace RockLib.Dynamic
                 }
                 else
                 {
-                    typeArguments = new Type[methodInfo.GetGenericArguments().Length];
+                    var genericArguments = methodInfo.GetGenericArguments();
+                    typeArguments = new Type[genericArguments.Length];
 
                     var parameters = methodInfo.GetParameters();
 
                     for (int i = 0; i < typeArguments.Length; i++)
                     {
+                        var typeArgumentName = genericArguments[i].Name;
+					
                         for (int j = 0; j < parameters.Length; j++)
                         {
                             var parameterType = parameters[j].ParameterType;
+							var definitionType = definition.ArgTypes[j];
 
                             // ref and out parameters need to be unwrapped.
                             if (parameterType.IsByRef)
@@ -1089,10 +1113,14 @@ namespace RockLib.Dynamic
                                 parameterType = parameterType.GetElementType();
                             }
 
-                            if (parameterType.IsGenericParameter
-                                && parameterType.GenericParameterPosition == i)
+                            var genericParameter = GetGenericParameters(parameterType, definitionType)
+                                .Where(t => t.Item1.Name == typeArgumentName)
+                                .Select(t => t.Item2)
+                                .FirstOrDefault();
+
+                            if (genericParameter != null)
                             {
-                                typeArguments[i] = definition.ArgTypes[j];
+                                typeArguments[i] = genericParameter;
                                 break;
                             }
                         }
@@ -1330,7 +1358,10 @@ namespace RockLib.Dynamic
             }
             else
             {
-                arguments[i] = Expression.Convert(item, parameterType);
+                if (GetGenericParameters(parameterType, argTypes[i]).Any())
+                    arguments[i] = Expression.Convert(item, argTypes[i]);
+                else
+                    arguments[i] = Expression.Convert(item, parameterType);
             }
         }
 
@@ -1866,7 +1897,21 @@ namespace RockLib.Dynamic
 
         private static bool GetCanBeAssignedValue(Type targetType, Type valueType, Type typeArgument)
         {
-            if (targetType.IsGenericParameter)
+            if (targetType.IsGenericType && targetType.GetGenericTypeDefinition() != typeof(Nullable<>))
+            {
+                if (targetType.IsAssignableFrom(valueType))
+                    return true;
+
+                var targetArguments = targetType.GetGenericArguments();
+                var valueArguments = valueType.GetGenericArguments();
+
+                if (targetArguments.Length != valueArguments.Length)
+                    return false;
+
+                return targetArguments.Zip(valueArguments, (target, value) => Tuple.Create(target, value))
+                    .All(x => GetCanBeAssignedValue(x.Item1, x.Item2, typeArgument));
+            }
+            else if (targetType.IsGenericParameter)
             {
                 var constraints = targetType.GenericParameterAttributes & GenericParameterAttributes.SpecialConstraintMask;
 

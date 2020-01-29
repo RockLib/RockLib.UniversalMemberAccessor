@@ -2804,6 +2804,78 @@ namespace RockLib.Dynamic.UnitTests
             Assert.That(obj.GetDerivedBaz(), Is.Not.EqualTo(-543.21));
         }
 
+        [Test]
+        public void GenericMethodsAreResolvedCorrectly()
+        {
+            var foo = new NonGenericFoo().Unlock();
+
+            int bar1 = 123;
+            int bar1ValueA = foo.Bar1<int>(123);
+            int bar1ValueB = foo.Bar1(123);
+            Assert.That(bar1ValueA, Is.EqualTo(bar1));
+            Assert.That(bar1ValueB, Is.EqualTo(bar1));
+
+            Lazy<int> baz1 = new Lazy<int>(() => 234);
+            Lazy<int> baz1ValueA = foo.Baz1<int>(baz1);
+            Lazy<int> baz1ValueB = foo.Baz1(baz1);
+            Assert.That(baz1ValueA, Is.SameAs(baz1));
+            Assert.That(baz1ValueB, Is.SameAs(baz1));
+
+            Func<Lazy<int>> qux1 = () => new Lazy<int>(() => 345);
+            Func<Lazy<int>> qux1ValueA = foo.Qux1<int>(qux1);
+            Func<Lazy<int>> qux1ValueB = foo.Qux1(qux1);
+            Assert.That(qux1ValueA, Is.SameAs(qux1));
+            Assert.That(qux1ValueB, Is.SameAs(qux1));
+
+            int bar2T = 123;
+            string bar2U = "abc";
+            Tuple<int, string> bar2A = foo.Bar2<int, string>(bar2T, bar2U);
+            Tuple<int, string> bar2B = foo.Bar2(bar2T, bar2U);
+            Assert.That(bar2A.Item1, Is.EqualTo(bar2T));
+            Assert.That(bar2A.Item2, Is.SameAs(bar2U));
+            Assert.That(bar2B.Item1, Is.EqualTo(bar2T));
+            Assert.That(bar2B.Item2, Is.SameAs(bar2U));
+
+            Lazy<int> baz2T = new Lazy<int>(() => 234);
+            Lazy<string> baz2U = new Lazy<string>(() => "bcd");
+            Tuple<Lazy<int>, Lazy<string>> baz2A = foo.Baz2<int, string>(baz2T, baz2U);
+            Tuple<Lazy<int>, Lazy<string>> baz2B = foo.Baz2(baz2T, baz2U);
+            Assert.That(baz2A.Item1, Is.SameAs(baz2T));
+            Assert.That(baz2A.Item2, Is.SameAs(baz2U));
+            Assert.That(baz2B.Item1, Is.SameAs(baz2T));
+            Assert.That(baz2B.Item2, Is.SameAs(baz2U));
+
+            Func<Lazy<int>> qux2T = () => new Lazy<int>(() => 345);
+            Func<Lazy<string>> qux2U = () => new Lazy<string>(() => "cde");
+            Tuple<Func<Lazy<int>>, Func<Lazy<string>>> qux2A = foo.Qux2<int, string>(qux2T, qux2U);
+            Tuple<Func<Lazy<int>>, Func<Lazy<string>>> qux2B = foo.Qux2(qux2T, qux2U);
+            Assert.That(qux2A.Item1, Is.SameAs(qux2T));
+            Assert.That(qux2A.Item2, Is.SameAs(qux2U));
+            Assert.That(qux2B.Item1, Is.SameAs(qux2T));
+            Assert.That(qux2B.Item2, Is.SameAs(qux2U));
+
+            Tuple<int, string> bar2ReversedA = foo.Bar2Reversed<int, string>(bar2U, bar2T);
+            Tuple<int, string> bar2ReversedB = foo.Bar2Reversed(bar2U, bar2T);
+            Assert.That(bar2ReversedA.Item1, Is.EqualTo(bar2T));
+            Assert.That(bar2ReversedA.Item2, Is.SameAs(bar2U));
+            Assert.That(bar2ReversedB.Item1, Is.EqualTo(bar2T));
+            Assert.That(bar2ReversedB.Item2, Is.SameAs(bar2U));
+
+            Tuple<Lazy<int>, Lazy<string>> baz2ReversedA = foo.Baz2Reversed<int, string>(baz2U, baz2T);
+            Tuple<Lazy<int>, Lazy<string>> baz2ReversedB = foo.Baz2Reversed(baz2U, baz2T);
+            Assert.That(baz2ReversedA.Item1, Is.SameAs(baz2T));
+            Assert.That(baz2ReversedA.Item2, Is.SameAs(baz2U));
+            Assert.That(baz2ReversedB.Item1, Is.SameAs(baz2T));
+            Assert.That(baz2ReversedB.Item2, Is.SameAs(baz2U));
+
+            Tuple<Func<Lazy<int>>, Func<Lazy<string>>> qux2ReversedA = foo.Qux2Reversed<int, string>(qux2U, qux2T);
+            Tuple<Func<Lazy<int>>, Func<Lazy<string>>> qux2ReversedB = foo.Qux2Reversed(qux2U, qux2T);
+            Assert.That(qux2ReversedA.Item1, Is.SameAs(qux2T));
+            Assert.That(qux2ReversedA.Item2, Is.SameAs(qux2U));
+            Assert.That(qux2ReversedB.Item1, Is.SameAs(qux2T));
+            Assert.That(qux2ReversedB.Item2, Is.SameAs(qux2U));
+        }
+
         private class BaseClassWithPrivateMembers
         {
             private int _foo = 1;
@@ -3098,6 +3170,19 @@ namespace RockLib.Dynamic.UnitTests
             ToStringInvocations++;
             return base.ToString();
         }
+    }
+
+    public class NonGenericFoo
+    {
+        private T Bar1<T>(T t) => t;
+        private Lazy<T> Baz1<T>(Lazy<T> lazyOfT) => lazyOfT;
+        private Func<Lazy<T>> Qux1<T>(Func<Lazy<T>> funcOfLazyOfT) => funcOfLazyOfT;
+        private Tuple<T, U> Bar2<T, U>(T t, U u) => Tuple.Create(t, u);
+        private Tuple<Lazy<T>, Lazy<U>> Baz2<T, U>(Lazy<T> lazyOfT, Lazy<U> lazyOfU) => Tuple.Create(lazyOfT, lazyOfU);
+        private Tuple<Func<Lazy<T>>, Func<Lazy<U>>> Qux2<T, U>(Func<Lazy<T>> funcOfLazyOfT, Func<Lazy<U>> funcOfLazyOfU) => Tuple.Create(funcOfLazyOfT, funcOfLazyOfU);
+        private Tuple<T, U> Bar2Reversed<T, U>(U u, T t) => Tuple.Create(t, u);
+        private Tuple<Lazy<T>, Lazy<U>> Baz2Reversed<T, U>(Lazy<U> lazyOfU, Lazy<T> lazyOfT) => Tuple.Create(lazyOfT, lazyOfU);
+        private Tuple<Func<Lazy<T>>, Func<Lazy<U>>> Qux2Reversed<T, U>(Func<Lazy<U>> funcOfLazyOfU, Func<Lazy<T>> funcOfLazyOfT) => Tuple.Create(funcOfLazyOfT, funcOfLazyOfU);
     }
 
     // ReSharper restore EventNeverSubscribedTo.Local
