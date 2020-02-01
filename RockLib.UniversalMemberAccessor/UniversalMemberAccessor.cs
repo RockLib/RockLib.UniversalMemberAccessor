@@ -998,15 +998,12 @@ namespace RockLib.Dynamic
         private static IEnumerable<Tuple<Type, Type>> GetGenericParameters(Type type, Type closedGenericType)
         {
             if (type.IsGenericParameter)
-            {
-                Debug.Assert(!closedGenericType.IsGenericParameter);
                 yield return Tuple.Create(type, closedGenericType);
-            }
-            
-            if (type.IsGenericType && closedGenericType.IsGenericType)
+
+            if (type.IsGenericType && closedGenericType?.IsGenericType != false)
             {
                 var genericArgs = type.GetGenericArguments();
-                var closedGenericArgs = closedGenericType.GetGenericArguments();
+                var closedGenericArgs = closedGenericType?.GetGenericArguments() ?? new Type[genericArgs.Length];
 
                 if (genericArgs.Length == closedGenericArgs.Length)
                     for (int i = 0; i < genericArgs.Length; i++)
@@ -1120,11 +1117,11 @@ namespace RockLib.Dynamic
                     for (int i = 0; i < typeArguments.Length; i++)
                     {
                         var typeArgumentName = genericArguments[i].Name;
-					
+
                         for (int j = 0; j < parameters.Length; j++)
                         {
                             var parameterType = parameters[j].ParameterType;
-							var definitionType = definition.ArgTypes[j];
+                            var definitionType = definition.ArgTypes[j];
 
                             // ref and out parameters need to be unwrapped.
                             if (parameterType.IsByRef)
@@ -1280,11 +1277,11 @@ namespace RockLib.Dynamic
                         parameterType = parameterType.GetElementType();
                     }
 
-                    if (parameterType.IsGenericParameter)
+                    if (GetGenericParameters(parameterType, null).Any())
                     {
                         if (typeArguments.Count > 0)
                         {
-                            parameterType = typeArguments[parameterType.GenericParameterPosition];
+                            parameterType = CloseGenericType(parameterType, typeArguments);
                         }
                         else
                         {
@@ -1308,44 +1305,68 @@ namespace RockLib.Dynamic
 
             if (skippedIndexes.Count > 0)
             {
-                // We have a generic out parameter that couldn't be resolved. Look at
-                // the other parameters to figure out what type to use.
+                // Collect all known generic types from the parameters
+                var genericParameterTypes = new Dictionary<string, Type>();
+                for (int i = 0; i < parameters.Length; i++)
+                {
+                    if (argTypes[i] == null)
+                        continue;
+
+                    var genericParameters = GetGenericParameters(parameters[i].ParameterType, argTypes[i]);
+                    foreach (var genericParameter in genericParameters)
+                        if (!genericParameterTypes.ContainsKey(genericParameter.Item1.Name))
+                            genericParameterTypes.Add(genericParameter.Item1.Name, genericParameter.Item2);
+                }
 
                 foreach (var i in skippedIndexes)
                 {
                     var parameterType = parameters[i].ParameterType;
 
-                    Debug.Assert(parameterType.IsByRef);
+                    if (parameterType.IsByRef)
+                        parameterType = parameterType.GetElementType();
 
-                    parameterType = parameterType.GetElementType();
-
-                    Debug.Assert(parameterType.IsGenericParameter);
-                    Debug.Assert(typeArguments.Count == 0);
-
-                    for (int j = 0; j < parameters.Length; j++)
-                    {
-                        if (i == j)
-                        {
-                            continue;
-                        }
-
-                        if (parameterType == parameters[j].ParameterType)
-                        {
-                            argTypes[i] = argTypes[j];
-                            break;
-                        }
-                    }
+                    if (parameterType.IsGenericParameter || parameterType.IsGenericType)
+                        argTypes[i] = CloseGenericType(parameterType, genericParameterTypes);
 
                     if (argTypes[i] == null)
-                    {
-                        // TODO: throw exception
-                    }
+                        throw new Exception($"We don't know the closed generic type for '{parameterType.Name}'");
 
                     SetArgumentsItem(argsParameter, argTypes, i, argTypes[i], arguments);
                 }
             }
 
             return arguments;
+        }
+
+        private static Type CloseGenericType(Type parameterType, Dictionary<string, Type> genericParameterTypes)
+        {
+            if (parameterType.IsGenericParameter)
+                if (genericParameterTypes.ContainsKey(parameterType.Name))
+                    return genericParameterTypes[parameterType.Name];
+                else
+                    throw new Exception($"We don't know the type for a generic argument '{parameterType.Name}'");
+
+            var genericArguments = parameterType.GetGenericArguments();
+            var genericTypeArguments = new Type[genericArguments.Length];
+
+            for (int i = 0; i < genericArguments.Length; i++)
+                genericTypeArguments[i] = CloseGenericType(genericArguments[i], genericParameterTypes);
+
+            return parameterType.GetGenericTypeDefinition().MakeGenericType(genericTypeArguments);
+        }
+
+        private static Type CloseGenericType(Type parameterType, IList<Type> methodTypeArguments)
+        {
+            if (parameterType.IsGenericParameter)
+                return methodTypeArguments[parameterType.GenericParameterPosition];
+
+            var genericArguments = parameterType.GetGenericArguments();
+            var genericTypeArguments = new Type[genericArguments.Length];
+
+            for (int i = 0; i < genericArguments.Length; i++)
+                genericTypeArguments[i] = CloseGenericType(genericArguments[i], methodTypeArguments);
+
+            return parameterType.GetGenericTypeDefinition().MakeGenericType(genericTypeArguments);
         }
 
         private static void SetArgumentsItem(
