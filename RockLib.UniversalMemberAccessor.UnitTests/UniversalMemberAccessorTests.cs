@@ -2810,8 +2810,8 @@ namespace RockLib.Dynamic.UnitTests
             var foo = new NonGenericFoo().Unlock();
 
             int bar1 = 123;
-            int bar1ValueA = foo.Bar1<int>(123);
-            int bar1ValueB = foo.Bar1(123);
+            int bar1ValueA = foo.Bar1<int>(bar1);
+            int bar1ValueB = foo.Bar1(bar1);
             Assert.That(bar1ValueA, Is.EqualTo(bar1));
             Assert.That(bar1ValueB, Is.EqualTo(bar1));
 
@@ -2874,6 +2874,100 @@ namespace RockLib.Dynamic.UnitTests
             Assert.That(qux2ReversedA.Item2, Is.SameAs(qux2U));
             Assert.That(qux2ReversedB.Item1, Is.SameAs(qux2T));
             Assert.That(qux2ReversedB.Item2, Is.SameAs(qux2U));
+        }
+
+        [Test]
+        public void GenericMethodsWithNullValuesAreResolvedCorrectly()
+        {
+            var foo = new NonGenericFoo().Unlock();
+
+            var graultT1 = "abc";
+            var graultT2 = new Lazy<string>(() => "abc");
+            var graultT3 = new Func<string>(() => "abc");
+            var graultT4 = new Lazy<Func<string>>(() => () => "abc");
+
+            var graultResult1 = foo.Grault(graultT1, graultT2, graultT3, graultT4);
+            Assert.That(graultResult1.Item1, Is.SameAs(graultT1));
+            Assert.That(graultResult1.Item2.Value, Is.SameAs(graultT2.Value));
+            Assert.That(graultResult1.Item3, Is.SameAs(graultT3));
+            Assert.That(graultResult1.Item4.Value, Is.SameAs(graultT4.Value));
+
+            var graultResult2 = foo.Grault(graultT1, null, null, null);
+            Assert.That(graultResult2.Item1, Is.SameAs(graultT1));
+            Assert.That(graultResult2.Item2, Is.SameAs(null));
+            Assert.That(graultResult2.Item3, Is.SameAs(null));
+            Assert.That(graultResult2.Item4, Is.SameAs(null));
+
+            var graultResult3 = foo.Grault(null, graultT2, null, null);
+            Assert.That(graultResult3.Item1, Is.SameAs(null));
+            Assert.That(graultResult3.Item2.Value, Is.SameAs(graultT2.Value));
+            Assert.That(graultResult3.Item3, Is.SameAs(null));
+            Assert.That(graultResult3.Item4, Is.SameAs(null));
+
+            var graultResult4 = foo.Grault(null, null, graultT3, null);
+            Assert.That(graultResult4.Item1, Is.SameAs(null));
+            Assert.That(graultResult4.Item2, Is.SameAs(null));
+            Assert.That(graultResult4.Item3, Is.SameAs(graultT3));
+            Assert.That(graultResult4.Item4, Is.SameAs(null));
+
+            var graultResult5 = foo.Grault(null, null, null, graultT4);
+            Assert.That(graultResult5.Item1, Is.SameAs(null));
+            Assert.That(graultResult5.Item2, Is.SameAs(null));
+            Assert.That(graultResult5.Item3, Is.SameAs(null));
+            Assert.That(graultResult5.Item4.Value, Is.SameAs(graultT4.Value));
+
+            Assert.That(() => foo.Grault(null, null, null, null), Throws.Exception);
+
+            var garplyT1 = "5/11/2020";
+            var garplyT2 = new SimpleObject1();
+            var garplyT3 = new SimpleObject2();
+            var garplyT4 = new Func<SimpleObject1, SimpleObject2, string>(
+                (one, two) => one == null || two == null
+                    ? "Not Enough Info"
+                    : "Had Enough Info");
+
+            var garplyResult1 = foo.Garply(garplyT1, garplyT2, garplyT3, garplyT4);
+            Assert.That(garplyResult1.Item1.Name, Is.EqualTo(garplyT3.Name));
+            Assert.That(garplyResult1.Item2, Is.SameAs(garplyT1));
+            Assert.That(garplyResult1.Item3.Name, Is.SameAs(garplyT2.Name));
+            Assert.That(garplyResult1.Item4, Is.SameAs(garplyT4));
+            Assert.That(garplyResult1.Item4.Invoke((SimpleObject1)garplyResult1.Item3, (SimpleObject2)garplyResult1.Item1), Is.SameAs(garplyT4(garplyT2, garplyT3)));
+
+            var garplyResult2 = foo.Garply(null, null, null, garplyT4);
+            Assert.That(garplyResult2.Item1, Is.Null);
+            Assert.That(garplyResult2.Item2, Is.Null);
+            Assert.That(garplyResult2.Item3, Is.Null);
+            Assert.That(garplyResult2.Item4, Is.SameAs(garplyT4));
+            Assert.That(garplyResult2.Item4.Invoke((SimpleObject1)garplyResult1.Item3, (SimpleObject2)garplyResult1.Item1), Is.SameAs(garplyT4(garplyT2, garplyT3)));
+
+            var garplyResult3 = foo.Garply(garplyT1, garplyT2, garplyT3, null);
+            Assert.That(garplyResult1.Item1.Name, Is.EqualTo(garplyT3.Name));
+            Assert.That(garplyResult1.Item2, Is.SameAs(garplyT1));
+            Assert.That(garplyResult1.Item3.Name, Is.SameAs(garplyT2.Name));
+            Assert.That(garplyResult3.Item4, Is.Null);
+
+            Assert.That(() => foo.Garply(null, null, null, null), Throws.Exception);
+        }
+
+        [Test, Ignore("Nullable values fail in generic methods fail")]
+        public void GenericMethodsWithNullableParametersShouldNotFail()
+        {
+            var foo = new NonGenericFoo().Unlock();
+
+            string garplyT1 = "5/11/2020";
+            DateTime? garplyT2 = new DateTime(2020, 2, 1);
+            int? garplyT3 = 100;
+            var garplyT4 = new Func<DateTime?, int?, string>(
+                (date, offset) => date == null || offset == null
+                    ? "Not Enough Info"
+                    : date.Value.AddDays(offset.Value).ToShortDateString());
+
+            var garplyResult1 = foo.Garply(garplyT1, garplyT2, garplyT3, garplyT4);
+            Assert.That(garplyResult1.Item1.Value, Is.SameAs(garplyT3.Value));
+            Assert.That(garplyResult1.Item2, Is.SameAs(garplyT1));
+            Assert.That(garplyResult1.Item3.Value, Is.SameAs(garplyT2.Value));
+            Assert.That(garplyResult1.Item4, Is.SameAs(garplyT4));
+            Assert.That(garplyResult1.Item4.Invoke((DateTime?)garplyResult1.Item3, (int?)garplyResult1.Item1), Is.SameAs(garplyT4(garplyT2, garplyT3)));
         }
 
         private class BaseClassWithPrivateMembers
@@ -3183,6 +3277,18 @@ namespace RockLib.Dynamic.UnitTests
         private Tuple<T, U> Bar2Reversed<T, U>(U u, T t) => Tuple.Create(t, u);
         private Tuple<Lazy<T>, Lazy<U>> Baz2Reversed<T, U>(Lazy<U> lazyOfU, Lazy<T> lazyOfT) => Tuple.Create(lazyOfT, lazyOfU);
         private Tuple<Func<Lazy<T>>, Func<Lazy<U>>> Qux2Reversed<T, U>(Func<Lazy<U>> funcOfLazyOfU, Func<Lazy<T>> funcOfLazyOfT) => Tuple.Create(funcOfLazyOfT, funcOfLazyOfU);
+        private Tuple<T, Lazy<T>, Func<T>, Lazy<Func<T>>> Grault<T>(T t1, Lazy<T> t2, Func<T> t3, Lazy<Func<T>> t4) => Tuple.Create(t1, t2, t3, t4);
+        private Tuple<T, U, V, Func<V,T,U>> Garply<T, U, V>(U t1, V t2, T t3, Func<V,T,U> t4) => Tuple.Create(t3, t1, t2, t4);
+    }
+
+    public class SimpleObject1
+    {
+        public string Name { get; set; } = "One";
+    }
+
+    public class SimpleObject2
+    {
+        public string Name { get; set; } = "Two";
     }
 
     // ReSharper restore EventNeverSubscribedTo.Local
