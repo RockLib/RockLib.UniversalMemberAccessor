@@ -6,7 +6,7 @@
 
   <PropertyGroup>
     <PackageId>RockLib.UniversalMemberAccessor</PackageId>
-    <PackageVersion>1.0.3</PackageVersion>
+    <PackageVersion>1.0.4</PackageVersion>
     <RootNamespace>RockLib.Dynamic</RootNamespace>
     <Authors>Brian Friesen</Authors>
     <Description>Defines a dynamic proxy object that enables easy access to non-public members.</Description>
