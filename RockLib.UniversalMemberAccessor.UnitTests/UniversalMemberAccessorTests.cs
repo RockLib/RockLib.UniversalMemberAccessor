@@ -2918,22 +2918,6 @@ namespace RockLib.Dynamic.UnitTests
 
             Assert.That(() => foo.Grault(null, null, null, null), Throws.Exception);
 
-            // TODO: Something is up with nullables
-            //string garplyT1 = "5/11/2020";
-            //DateTime? garplyT2 = new DateTime(2020, 2, 1);
-            //int? garplyT3 = 100;
-            //var garplyT4 = new Func<DateTime?, int?, string>(
-            //    (date, offset) => date == null || offset == null
-            //        ? "Not Enough Info"
-            //        : date.Value.AddDays(offset.Value).ToShortDateString());
-
-            //var garplyResult1 = foo.Garply(garplyT1, garplyT2, garplyT3, garplyT4);
-            //Assert.That(garplyResult1.Item1.Value, Is.SameAs(garplyT3.Value));
-            //Assert.That(garplyResult1.Item2, Is.SameAs(garplyT1));
-            //Assert.That(garplyResult1.Item3.Value, Is.SameAs(garplyT2.Value));
-            //Assert.That(garplyResult1.Item4, Is.SameAs(garplyT4));
-            //Assert.That(garplyResult1.Item4.Invoke((DateTime?)garplyResult1.Item3, (int?)garplyResult1.Item1), Is.SameAs(garplyT4(garplyT2, garplyT3)));
-
             var garplyT1 = "5/11/2020";
             var garplyT2 = new SimpleObject1();
             var garplyT3 = new SimpleObject2();
@@ -2963,6 +2947,27 @@ namespace RockLib.Dynamic.UnitTests
             Assert.That(garplyResult3.Item4, Is.Null);
 
             Assert.That(() => foo.Garply(null, null, null, null), Throws.Exception);
+        }
+
+        [Test, Ignore("Nullable values fail in generic methods fail")]
+        public void GenericMethodsWithNullableParametersShouldNotFail()
+        {
+            var foo = new NonGenericFoo().Unlock();
+
+            string garplyT1 = "5/11/2020";
+            DateTime? garplyT2 = new DateTime(2020, 2, 1);
+            int? garplyT3 = 100;
+            var garplyT4 = new Func<DateTime?, int?, string>(
+                (date, offset) => date == null || offset == null
+                    ? "Not Enough Info"
+                    : date.Value.AddDays(offset.Value).ToShortDateString());
+
+            var garplyResult1 = foo.Garply(garplyT1, garplyT2, garplyT3, garplyT4);
+            Assert.That(garplyResult1.Item1.Value, Is.SameAs(garplyT3.Value));
+            Assert.That(garplyResult1.Item2, Is.SameAs(garplyT1));
+            Assert.That(garplyResult1.Item3.Value, Is.SameAs(garplyT2.Value));
+            Assert.That(garplyResult1.Item4, Is.SameAs(garplyT4));
+            Assert.That(garplyResult1.Item4.Invoke((DateTime?)garplyResult1.Item3, (int?)garplyResult1.Item1), Is.SameAs(garplyT4(garplyT2, garplyT3)));
         }
 
         private class BaseClassWithPrivateMembers
