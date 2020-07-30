@@ -8,14 +8,14 @@
     <PackageId>RockLib.UniversalMemberAccessor</PackageId>
     <PackageVersion>1.0.4</PackageVersion>
     <RootNamespace>RockLib.Dynamic</RootNamespace>
-    <Authors>Brian Friesen</Authors>
+    <Authors>RockLib</Authors>
     <Description>Defines a dynamic proxy object that enables easy access to non-public members.</Description>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageReleaseNotes></PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/RockLib/RockLib.UniversalMemberAccessor</PackageProjectUrl>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <Copyright>Copyright 2015-2020 (c) Quicken Loans Corporation. All rights reserved.</Copyright>
-    <PackageTags>dynamic proxy nonpublic</PackageTags>
+    <PackageTags>rocklib dynamic proxy nonpublic</PackageTags>
     <Version>1.0.0</Version>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
