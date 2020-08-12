@@ -19,7 +19,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RockLib.UniversalMemberAcce
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		RockLib.UniversalMemberAccessor.UnitTests\RockLib.UniversalMemberAccessor.UnitTests.projitems*{02b7ac42-37b1-4ee2-9bcc-3f6d0a047449}*SharedItemsImports = 5
+		RockLib.UniversalMemberAccessor.UnitTests\RockLib.UniversalMemberAccessor.UnitTests.projitems*{1c154e11-1ab9-43cb-9d81-13fe0af1e966}*SharedItemsImports = 5
+		RockLib.UniversalMemberAccessor.UnitTests\RockLib.UniversalMemberAccessor.UnitTests.projitems*{70451b1c-0131-4d87-9545-37236300d1ae}*SharedItemsImports = 5
 		RockLib.UniversalMemberAccessor.UnitTests\RockLib.UniversalMemberAccessor.UnitTests.projitems*{8a264bcf-9891-4e7d-9e1e-10bac3e89f27}*SharedItemsImports = 13
+		RockLib.UniversalMemberAccessor.UnitTests\RockLib.UniversalMemberAccessor.UnitTests.projitems*{93ec54cf-d2c5-4e49-9ec1-301a780f1c35}*SharedItemsImports = 5
+		RockLib.UniversalMemberAccessor.UnitTests\RockLib.UniversalMemberAccessor.UnitTests.projitems*{e8d5530c-e4cc-4521-9473-0663b03d2de7}*SharedItemsImports = 5
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

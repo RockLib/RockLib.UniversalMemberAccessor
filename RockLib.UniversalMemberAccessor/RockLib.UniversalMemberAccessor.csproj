@@ -14,6 +14,7 @@
     <PackageReleaseNotes></PackageReleaseNotes>
     <PackageProjectUrl>https://github.com/RockLib/RockLib.UniversalMemberAccessor</PackageProjectUrl>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
+    <PackageIcon>icon.png</PackageIcon>
     <Copyright>Copyright 2015-2020 (c) Quicken Loans Corporation. All rights reserved.</Copyright>
     <PackageTags>rocklib dynamic proxy nonpublic</PackageTags>
     <Version>1.0.0</Version>
@@ -26,6 +27,7 @@
 
   <ItemGroup>
     <None Include="..\LICENSE.md" Pack="true" PackagePath=""/>
+    <None Include="..\icon.png" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net40'">
