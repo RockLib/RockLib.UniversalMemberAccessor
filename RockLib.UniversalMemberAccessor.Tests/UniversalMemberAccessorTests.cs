@@ -996,7 +996,7 @@ namespace RockLib.Dynamic.UnitTests
             Assert.That(bar, Is.EqualTo(fieldValue));
         }
 
-#if NETCOREAPP3_0
+#if NET5_0 || NETCOREAPP3_1
         [Test]
         public void CannotSetReadonlyReferenceTypeStaticField()
         {
@@ -1023,7 +1023,7 @@ namespace RockLib.Dynamic.UnitTests
         }
 #endif
 
-#if NET40 || NETCOREAPP3_0
+#if NET5_0 || NETCOREAPP3_1 || NET462
         [Test]
         public void CannotSetReadonlyValueTypeStaticField()
         {
