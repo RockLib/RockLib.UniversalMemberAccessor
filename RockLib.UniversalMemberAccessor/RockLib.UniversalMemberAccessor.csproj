@@ -15,7 +15,7 @@
     <PackageProjectUrl>https://github.com/RockLib/RockLib.UniversalMemberAccessor</PackageProjectUrl>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
     <PackageIcon>icon.png</PackageIcon>
-    <Copyright>Copyright 2015-2020 (c) Quicken Loans Corporation. All rights reserved.</Copyright>
+    <Copyright>Copyright 2015-2021 (c) Quicken Loans Corporation. All rights reserved.</Copyright>
     <PackageTags>rocklib dynamic proxy nonpublic</PackageTags>
     <Version>1.0.0</Version>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
@@ -47,7 +47,7 @@
 
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="Microsoft.CSharp" Version="4.4.1" />
-    <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.3.0" />
+    <PackageReference Include="System.Reflection.Emit.Lightweight" Version="4.7.0" />
   </ItemGroup>
 
 </Project>
