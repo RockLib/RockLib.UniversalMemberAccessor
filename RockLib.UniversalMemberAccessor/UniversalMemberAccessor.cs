@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.CSharp.RuntimeBinder;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -11,7 +12,6 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using Microsoft.CSharp.RuntimeBinder;
 
 namespace RockLib.Dynamic
 {
@@ -45,7 +45,7 @@ namespace RockLib.Dynamic
         private static readonly ConcurrentDictionary<InvokeMethodDefinition, Func<object, object[], object>> _invokeMethodFuncs = new ConcurrentDictionary<InvokeMethodDefinition, Func<object, object[], object>>();
         private static readonly ConcurrentDictionary<CreateInstanceDefinition, Func<object[], object>> _createInstanceFuncs = new ConcurrentDictionary<CreateInstanceDefinition, Func<object[], object>>();
 
-        private readonly object _instance;
+        private readonly object? _instance;
         private readonly Lazy<UniversalMemberAccessor> _base;
         private readonly Type _type;
         private readonly List<PropertyInfo> _indexers;
@@ -148,11 +148,10 @@ namespace RockLib.Dynamic
         {
             _type = type;
             _indexers = _type.GetProperties().Where(p => p.Name == "Item").ToList();
-            _instance = null!;
 
             if (_type.BaseType is not null)
             {
-                _base = new Lazy<UniversalMemberAccessor>(() => new UniversalMemberAccessor(_instance, _type.BaseType));
+                _base = new Lazy<UniversalMemberAccessor>(() => new UniversalMemberAccessor(_instance!, _type.BaseType));
             }
             else
             {
@@ -179,7 +178,6 @@ namespace RockLib.Dynamic
             }
             else
             {
-                
                 _base = new Lazy<UniversalMemberAccessor>(() => null!);
             }
 
@@ -313,46 +311,47 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
-        public override bool TryGetMember(GetMemberBinder binder, out object result)
+#if NET48
+        public override bool TryGetMember(GetMemberBinder binder, out object? result)
         {
+            if (binder is null)
+            {
+                throw new ArgumentNullException(nameof(binder));
+            }
+#else
+        public override bool TryGetMember([NotNull] GetMemberBinder binder, out object? result)
+        {
+#endif
             Func<object, object> getMember;
 
-            if (binder is not null)
+            if (!TryGetGetMemberFunc(binder.Name, out getMember))
             {
-                if (!TryGetGetMemberFunc(binder.Name, out getMember))
+                switch (binder.Name)
                 {
-                    switch (binder.Name)
-                    {
-                        case "Instance":
-                        case "Object":
-                        case "Value":
-                            if (_instance is not null)
-                            {
-                                result = _instance;
-                                return true;
-                            }
-                            break;
-                        case "Base":
-                        case "BaseType":
-                        case "BaseClass":
-                            if (_base is not null)
-                            {
-                                result = _base.Value;
-                                return true;
-                            }
-                            break;
-                    }
+                    case "Instance":
+                    case "Object":
+                    case "Value":
+                        if (_instance is not null)
+                        {
+                            result = _instance;
+                            return true;
+                        }
+                        break;
+                    case "Base":
+                    case "BaseType":
+                    case "BaseClass":
+                        if (_base is not null)
+                        {
+                            result = _base.Value;
+                            return true;
+                        }
+                        break;
+                }
 
-                    return base.TryGetMember(binder, out result!);
-                } 
-            }
-            else
-            {
-                result = null!;
-                return false;
+                return base.TryGetMember(binder, out result);
             }
 
-            result = getMember(_instance);
+            result = getMember(_instance!);
             return true;
         }
 
@@ -374,24 +373,26 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
+#if NET48
         public override bool TrySetMember(SetMemberBinder binder, object? value)
         {
+            if (binder is null)
+            {
+                throw new ArgumentNullException(nameof(binder));
+            }
+#else
+        public override bool TrySetMember([NotNull] SetMemberBinder binder, object? value)
+        {
+#endif
             Action<object, object> setMember;
             var valueType = GetValueType(value);
 
-            if (binder is not null)
+            if (!TryGetSetMemberAction(binder.Name, valueType, out setMember))
             {
-                if (!TryGetSetMemberAction(binder.Name, valueType, out setMember))
-                {
-                    return base.TrySetMember(binder, value);
-                }
-            }
-            else
-            {
-                return false;
+                return base.TrySetMember(binder, value);
             }
 
-            setMember(_instance, value!);
+            setMember(_instance!, value!);
             return true;
         }
 
@@ -401,7 +402,7 @@ namespace RockLib.Dynamic
                 value is null
                     ? null
                     : value is UniversalMemberAccessor
-                        ? ((UniversalMemberAccessor)value)._instance.GetType()
+                        ? ((UniversalMemberAccessor)value)._instance!.GetType()
                         : value.GetType();
         }
 
@@ -423,27 +424,30 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false. If this method returns false, the run-time binder of the language determines the behavior. (In most cases, a language-specific run-time exception is thrown.)
         /// </returns>
+#if NET48
         public override bool TryInvokeMember(
             InvokeMemberBinder binder,
             object?[]? args,
-            out object result)
+            out object? result)
         {
+            if (binder is null)
+            {
+                throw new ArgumentNullException(nameof(binder));
+            }
+#else
+        public override bool TryInvokeMember(
+            [NotNull] InvokeMemberBinder binder,
+            object?[]? args,
+            out object? result)
+        {
+#endif
             var typeArguments = _getCSharpTypeArguments(binder);
-            Func<object, object[],object>? invokeMethodFunc = null;
 
-            if (binder is not null)
-            {
-                invokeMethodFunc = _invokeMethodFuncs.GetOrAdd(
-                        new InvokeMethodDefinition(_type, binder.Name, typeArguments, args!),
-                        CreateInvokeMethodFunc); 
-            }
-            else
-            {
-                result = null!;
-                return false;
-            }
+            var invokeMethodFunc = _invokeMethodFuncs.GetOrAdd(
+                new InvokeMethodDefinition(_type, binder.Name, typeArguments, args!),
+                CreateInvokeMethodFunc);
 
-            result = invokeMethodFunc(_instance, args!);
+            result = invokeMethodFunc(_instance!, args!);
             return true;
         }
 
@@ -515,71 +519,75 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
+#if NET48
         public override bool TryGetIndex(
             GetIndexBinder binder,
             object[] indexes,
-            out object result)
+            out object? result)
         {
-            if (indexes is not null)
+            if (indexes is null)
             {
-                if (indexes.Length == 1
-                        && indexes[0] is string)
-                {
-                    Func<object, object> getMember;
+                throw new ArgumentNullException(nameof(indexes));
+            }
+#else
+        public override bool TryGetIndex(
+            GetIndexBinder binder,
+            [NotNull] object[] indexes,
+            out object? result)
+        {
+#endif
+            if (indexes.Length == 1
+                && indexes[0] is string)
+            {
+                Func<object, object> getMember;
 
-                    if (TryGetGetMemberFunc((string)indexes[0], out getMember))
-                    {
-                        result = getMember(_instance);
-                        return true;
-                    }
+                if (TryGetGetMemberFunc((string)indexes[0], out getMember))
+                {
+                    result = getMember(_instance!);
+                    return true;
+                }
+            }
+
+            if (_indexers is not null)
+            {
+                if (_indexers.Count == 1)
+                {
+                    result = _indexers[0].GetValue(_instance, indexes);
+                    return true;
                 }
 
-                if (_indexers is not null)
+                foreach (var indexer in _indexers)
                 {
-                    if (_indexers.Count == 1)
+                    var getMethod = indexer.GetGetMethod();
+                    var parameters = getMethod!.GetParameters();
+                    if (parameters.Length == indexes.Length)
                     {
-                        result = _indexers[0].GetValue(_instance, indexes)!;
-                        return true;
-                    }
-
-                    foreach (var indexer in _indexers)
-                    {
-                        var getMethod = indexer.GetGetMethod();
-                        var parameters = getMethod?.GetParameters();
-                        if (parameters?.Length == indexes.Length)
+                        var foundMatch = true;
+                        for (int i = 0; i < indexes.Length; i++)
                         {
-                            var foundMatch = true;
-                            for (int i = 0; i < indexes.Length; i++)
+                            if (indexes[i].GetType() != parameters[i].ParameterType)
                             {
-                                if (indexes[i].GetType() != parameters[i].ParameterType)
-                                {
-                                    foundMatch = false;
-                                    break;
-                                }
-                            }
-
-                            if (foundMatch)
-                            {
-                                result = indexer.GetValue(_instance, indexes)!;
-                                return true;
+                                foundMatch = false;
+                                break;
                             }
                         }
+
+                        if (foundMatch)
+                        {
+                            result = indexer.GetValue(_instance, indexes);
+                            return true;
+                        }
                     }
-                } 
-            }
-            else
-            {
-                result = null!;
-                return false;
+                }
             }
 
             if (_type.IsArray)
             {
-                result = ((Array)_instance).GetValue(indexes.Cast<int>().ToArray())!;
+                result = ((Array)_instance!).GetValue(indexes.Cast<int>().ToArray());
                 return true;
             }
 
-            return base.TryGetIndex(binder, indexes, out result!);
+            return base.TryGetIndex(binder, indexes, out result);
         }
 
         /// <summary>
@@ -591,67 +599,72 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
+#if NET48
         public override bool TrySetIndex(
             SetIndexBinder binder,
             object[] indexes,
             object? value)
         {
-            if (indexes is not null)
+            if (indexes is null)
             {
-                if (indexes.Length == 1
-                        && indexes[0] is string)
-                {
-                    Action<object, object> setMember;
-                    var valueType = GetValueType(value);
+                throw new ArgumentNullException(nameof(indexes));
+            }
+#else
+        public override bool TrySetIndex(
+            SetIndexBinder binder,
+            [NotNull] object[] indexes,
+            object? value)
+        {
+#endif
+            if (indexes.Length == 1
+                && indexes[0] is string)
+            {
+                Action<object, object> setMember;
+                var valueType = GetValueType(value);
 
-                    if (TryGetSetMemberAction((string)indexes[0], valueType, out setMember))
-                    {
-                        setMember(_instance, value!);
-                        return true;
-                    }
+                if (TryGetSetMemberAction((string)indexes[0], valueType, out setMember))
+                {
+                    setMember(_instance!, value!);
+                    return true;
+                }
+            }
+
+            if (_indexers is not null)
+            {
+                if (_indexers.Count == 1)
+                {
+                    _indexers[0].SetValue(_instance, value, indexes);
+                    return true;
                 }
 
-                if (_indexers is not null)
+                foreach (var indexer in _indexers)
                 {
-                    if (_indexers.Count == 1)
+                    var setMethod = indexer.GetSetMethod();
+                    var parameters = setMethod!.GetParameters();
+                    if (parameters.Length == indexes.Length + 1)
                     {
-                        _indexers[0].SetValue(_instance, value, indexes);
-                        return true;
-                    }
-
-                    foreach (var indexer in _indexers)
-                    {
-                        var setMethod = indexer.GetSetMethod();
-                        var parameters = setMethod?.GetParameters();
-                        if (parameters?.Length == indexes.Length + 1)
+                        var foundMatch = true;
+                        for (int i = 0; i < indexes.Length; i++)
                         {
-                            var foundMatch = true;
-                            for (int i = 0; i < indexes.Length; i++)
+                            if (indexes[i].GetType() != parameters[i].ParameterType)
                             {
-                                if (indexes[i].GetType() != parameters[i].ParameterType)
-                                {
-                                    foundMatch = false;
-                                    break;
-                                }
-                            }
-
-                            if (foundMatch)
-                            {
-                                indexer.SetValue(_instance, value, indexes);
-                                return true;
+                                foundMatch = false;
+                                break;
                             }
                         }
+
+                        if (foundMatch)
+                        {
+                            indexer.SetValue(_instance, value, indexes);
+                            return true;
+                        }
                     }
-                } 
-            }
-            else
-            {
-                return false;
+                }
             }
 
             if (_type.IsArray)
             {
-                ((Array)_instance).SetValue(value, indexes.Cast<int>().ToArray());
+                ((Array)_instance!).SetValue(value, indexes.Cast<int>().ToArray());
                 return true;
             }
 
@@ -666,24 +679,27 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
+#if NET48
         public override bool TryConvert(
             ConvertBinder binder,
             out object result)
         {
-            if (binder is not null)
+            if (binder is null)
             {
-                if (!binder.ReturnType.IsAssignableFrom(_type))
-                {
-                    throw new RuntimeBinderException($"Cannot implicitly convert type '{_type}' to '{binder.ReturnType}'");
-                } 
+                throw new ArgumentNullException(nameof(binder));
             }
-            else
+#else
+        public override bool TryConvert(
+            [NotNull] ConvertBinder binder,
+            out object result)
+        {
+#endif
+            if (!binder.ReturnType.IsAssignableFrom(_type))
             {
-                result = null!;
-                return false;
+                throw new RuntimeBinderException($"Cannot implicitly convert type '{_type}' to '{binder.ReturnType}'");
             }
 
-            result = _instance;
+            result = _instance!;
             return true;
         }
 
@@ -1075,7 +1091,7 @@ namespace RockLib.Dynamic
                     case "CreateInstance":
                     case "NewInstance":
                         var createInstanceFunc = _createInstanceFuncs.GetOrAdd(
-                            new CreateInstanceDefinition(definition.Type, definition.ArgTypes),
+                            new CreateInstanceDefinition(definition.Type, definition.ArgTypes!),
                             CreateCreateInstanceFunc);
 
                         return (instance, args) => createInstanceFunc(args);
@@ -1093,7 +1109,7 @@ namespace RockLib.Dynamic
             }
             else
             {
-                var betterMethods = GetBetterMethods(definition.ArgTypes, legalCandidates);
+                var betterMethods = GetBetterMethods(definition.ArgTypes!, legalCandidates);
 
                 if (betterMethods.Count == 1)
                 {
@@ -1120,7 +1136,7 @@ namespace RockLib.Dynamic
             var argsParameter = Expression.Parameter(typeof(object[]), "args");
 
             var methodInfoParameters = methodInfo.GetParameters();
-            var callArguments = GetArguments(methodInfoParameters, argsParameter, definition.ArgTypes, definition.TypeArguments);
+            var callArguments = GetArguments(methodInfoParameters, argsParameter, definition.ArgTypes!, definition.TypeArguments);
 
             var localVariables = new List<ParameterExpression>();
             var assignToVariables = new List<Expression>();
@@ -1179,7 +1195,7 @@ namespace RockLib.Dynamic
                                 parameterType = parameterType.GetElementType();
                             }
 
-                            var genericParameter = GetGenericParameters(parameterType!, definitionType)
+                            var genericParameter = GetGenericParameters(parameterType!, definitionType!)
                                 .Where(t => t.Item1.Name == typeArgumentName)
                                 .Select(t => t.Item2)
                                 .FirstOrDefault();
@@ -1276,9 +1292,9 @@ namespace RockLib.Dynamic
                     .Where(m => m.Name == definition.Name);
 
             var candidates = methodInfos.Select(c => new Candidate(c))
-                .Where(c => c.HasRequiredNumberOfParameters(definition.ArgTypes)).ToList();
+                .Where(c => c.HasRequiredNumberOfParameters(definition.ArgTypes!)).ToList();
 
-            var legalCandidates = candidates.Where(c => c.IsLegal(definition.ArgTypes, definition.TypeArguments)).ToList();
+            var legalCandidates = candidates.Where(c => c.IsLegal(definition.ArgTypes!, definition.TypeArguments)).ToList();
 
             if (legalCandidates.Count > 0)
             {
@@ -1487,7 +1503,7 @@ namespace RockLib.Dynamic
                 var universalMemberAccessor = args[i] as UniversalMemberAccessor;
                 if (universalMemberAccessor is not null)
                 {
-                    args[i] = universalMemberAccessor._instance;
+                    args[i] = universalMemberAccessor._instance!;
                 }
             }
 
@@ -1500,7 +1516,7 @@ namespace RockLib.Dynamic
 
             if (universalMemberAccessor is not null)
             {
-                instance = universalMemberAccessor._instance;
+                instance = universalMemberAccessor._instance!;
             }
 
             return instance;
@@ -2160,14 +2176,14 @@ namespace RockLib.Dynamic
             private readonly Type[] _argTypes;
 
             public CreateInstanceDefinition(Type type, object[] args)
-                : this(type, args.Select(arg => arg is UniversalMemberAccessor ? ((UniversalMemberAccessor)arg)._instance.GetType() : arg.GetType()).ToArray())
+                : this(type, args.Select(arg => arg is not null ? (arg is UniversalMemberAccessor ? ((UniversalMemberAccessor)arg)._instance!.GetType() : arg.GetType()) : null).ToArray())
             {
             }
 
-            public CreateInstanceDefinition(Type type, Type[] argTypes)
+            public CreateInstanceDefinition(Type type, Type?[] argTypes)
             {
                 _type = type;
-                _argTypes = argTypes;
+                _argTypes = argTypes!;
             }
 
             public Type Type
@@ -2215,14 +2231,14 @@ namespace RockLib.Dynamic
             private readonly Type _type;
             private readonly string _name;
             private readonly IList<Type> _typeArguments;
-            private readonly Type[] _argTypes;
+            private readonly Type?[] _argTypes;
 
             public InvokeMethodDefinition(Type type, string name, IList<Type> typeArguments, object[] args)
             {
                 _type = type;
                 _name = name;
                 _typeArguments = typeArguments;
-                _argTypes = args.Select(arg => arg is UniversalMemberAccessor ? ((UniversalMemberAccessor)arg)._instance.GetType() : arg.GetType()).ToArray();
+                _argTypes = args.Select(arg => arg is not null ? (arg is UniversalMemberAccessor ? ((UniversalMemberAccessor)arg)._instance!.GetType() : arg.GetType()) : null).ToArray();
             }
 
             public Type Type
@@ -2240,7 +2256,7 @@ namespace RockLib.Dynamic
                 get { return _typeArguments; }
             }
 
-            public Type[] ArgTypes
+            public Type?[] ArgTypes
             {
                 get { return _argTypes; }
             }

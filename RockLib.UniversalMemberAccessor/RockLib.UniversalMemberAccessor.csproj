@@ -1,8 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Authors>RockLib</Authors>
-    <Copyright>Copyright 2015-2021 (c) Rocket Mortgage. All rights reserved.</Copyright>
+    <Copyright>Copyright 2022 (c) Rocket Mortgage. All rights reserved.</Copyright>
     <DebugType>Embedded</DebugType>
     <Description>Defines a dynamic proxy object that enables easy access to non-public members.</Description>
     <EmbedUntrackedSources>True</EmbedUntrackedSources>

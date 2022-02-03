@@ -15,13 +15,13 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         public static ConstructorDefinition Constructor(Visibility visibility = Visibility.Public, params Parameter[] parameters)
         {
-            parameters = parameters ?? new Parameter[0];
+            parameters = parameters ?? Array.Empty<Parameter>();
 
             var methodAttributes = GetMethodAttributes(visibility, true);
 
             return new ConstructorDefinition((tb, fields) =>
             {
-                var constructorBuilder = tb.DefineConstructor(methodAttributes, CallingConventions.Standard, parameters.Select(p => p.Type).ToArray());
+                var constructorBuilder = tb.DefineConstructor(methodAttributes, CallingConventions.Standard, parameters.Select(p => p.Type).ToArray()!);
 
                 for (int i = 0; i < parameters.Length; i++)
                 {
@@ -38,11 +38,11 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                 {
                     var parameter = parameters[i];
 
-                    if (parameter.FieldToSet != null)
+                    if (parameter.FieldToSet is not null)
                     {
                         var fieldBuilder = fields.SingleOrDefault(f => f.Name == parameter.FieldToSet);
 
-                        if (fieldBuilder != null)
+                        if (fieldBuilder is not null)
                         {
                             if (fieldBuilder.IsStatic)
                             {
@@ -59,8 +59,8 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                     }
                 }
 
-                il.Emit(OpCodes.Ldstr, tb.Name + ".ctor(" + string.Join(", ", parameters.Select(p => p.Type.Name)) + ")");
-                il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) }));
+                il.Emit(OpCodes.Ldstr, tb.Name + ".ctor(" + string.Join(", ", parameters.Select(p => p.Type?.Name)) + ")");
+                il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) })!);
 
                 il.Emit(OpCodes.Ret);
             });
@@ -68,18 +68,18 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         public static MemberDefinition Method(string name, params Parameter[] parameters)
         {
-            return Method(name, false, parameters:parameters);
+            return Method(name, false, parameters: parameters);
         }
 
         public static MemberDefinition Method(string name, bool isStatic = false, Visibility visibility = Visibility.Public, params Parameter[] parameters)
         {
-            parameters = parameters ?? new Parameter[0];
+            parameters = parameters ?? Array.Empty<Parameter>();
 
             var methodAttributes = GetMethodAttributes(visibility, false, isStatic);
 
             return new ConstructorDefinition((tb, fields) =>
             {
-                var methodBuilder = tb.DefineMethod(name, methodAttributes, typeof(void), parameters.Select(p => p.Type).ToArray());
+                var methodBuilder = tb.DefineMethod(name, methodAttributes, typeof(void), parameters.Select(p => p.Type).ToArray()!);
 
                 for (int i = 0; i < parameters.Length; i++)
                 {
@@ -96,11 +96,11 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                 {
                     var parameter = parameters[i];
 
-                    if (parameter.FieldToSet != null)
+                    if (parameter.FieldToSet is not null)
                     {
                         var fieldBuilder = fields.SingleOrDefault(f => f.Name == parameter.FieldToSet);
 
-                        if (fieldBuilder != null)
+                        if (fieldBuilder is not null)
                         {
                             if (fieldBuilder.IsStatic)
                             {
@@ -117,8 +117,8 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                     }
                 }
 
-                il.Emit(OpCodes.Ldstr, "void " + tb.Name + "." + name + "(" + string.Join(", ", parameters.Select(p => p.Type.Name)) + ")");
-                il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) }));
+                il.Emit(OpCodes.Ldstr, "void " + tb.Name + "." + name + "(" + string.Join(", ", parameters.Select(p => p.Type?.Name)) + ")");
+                il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) })!);
 
                 il.Emit(OpCodes.Ret);
             });
@@ -126,8 +126,8 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         public static MemberDefinition EchoMethod(string name, Type type, bool isStatic = false, Visibility visibility = Visibility.Public)
         {
-            if (name == null) throw new ArgumentNullException("name");
-            if (type == null) throw new ArgumentNullException("type");
+            if (name is null) throw new ArgumentNullException(nameof(name));
+            if (type is null) throw new ArgumentNullException(nameof(type));
 
             var methodAttributes = GetMethodAttributes(visibility, false, isStatic);
 
@@ -137,7 +137,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                 var il = methodBuilder.GetILGenerator();
 
                 il.Emit(OpCodes.Ldstr, type.Name + " " + tb.Name + "." + name + "(" + type.Name + ")");
-                il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) }));
+                il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) })!);
 
                 il.Emit(isStatic ? OpCodes.Ldarg_0 : OpCodes.Ldarg_1);
 
@@ -157,11 +157,11 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         private static MemberDefinition EchoByRefMethod(string name, Type type, bool hasOutParameter, bool returnsVoid, bool isStatic, Visibility visibility)
         {
-            if (name == null) throw new ArgumentNullException("name");
-            if (type == null) throw new ArgumentNullException("type");
+            if (name is null) throw new ArgumentNullException(nameof(name));
+            if (type is null) throw new ArgumentNullException(nameof(type));
 
             var methodAttributes = GetMethodAttributes(visibility, false, isStatic);
-            
+
             return new MemberDefinition((tb, fields) =>
             {
                 var methodBuilder = tb.DefineMethod(name, methodAttributes, returnsVoid ? typeof(void) : type, new[] { type, type.MakeByRefType() });
@@ -202,10 +202,10 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
             });
         }
 
-        public static MemberDefinition AutoProperty(string name, Type type, bool isStatic = false, Visibility visibility = Visibility.Public, string backingFieldName = null)
+        public static MemberDefinition AutoProperty(string name, Type type, bool isStatic = false, Visibility visibility = Visibility.Public, string? backingFieldName = null)
         {
-            if (name == null) throw new ArgumentNullException("name");
-            if (type == null) throw new ArgumentNullException("type");
+            if (name is null) throw new ArgumentNullException(nameof(name));
+            if (type is null) throw new ArgumentNullException(nameof(type));
 
             backingFieldName = backingFieldName ?? "<" + name + ">k__BackingField";
 
@@ -227,10 +227,10 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
             });
         }
 
-        public static MemberDefinition ReadOnlyProperty(string name, Type type, bool isStatic = false, Visibility visibility = Visibility.Public, string backingFieldName = null)
+        public static MemberDefinition ReadOnlyProperty(string name, Type type, bool isStatic = false, Visibility visibility = Visibility.Public, string? backingFieldName = null)
         {
-            if (name == null) throw new ArgumentNullException("name");
-            if (type == null) throw new ArgumentNullException("type");
+            if (name is null) throw new ArgumentNullException(nameof(name));
+            if (type is null) throw new ArgumentNullException(nameof(type));
 
             backingFieldName = backingFieldName ?? "<" + name + ">k__BackingField";
 
@@ -249,10 +249,10 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
             });
         }
 
-        public static MemberDefinition WriteOnlyProperty(string name, Type type, bool isStatic = false, Visibility visibility = Visibility.Public, string backingFieldName = null)
+        public static MemberDefinition WriteOnlyProperty(string name, Type type, bool isStatic = false, Visibility visibility = Visibility.Public, string? backingFieldName = null)
         {
-            if (name == null) throw new ArgumentNullException("name");
-            if (type == null) throw new ArgumentNullException("type");
+            if (name is null) throw new ArgumentNullException(nameof(name));
+            if (type is null) throw new ArgumentNullException(nameof(type));
 
             backingFieldName = backingFieldName ?? "<" + name + ">k__BackingField";
 
@@ -279,7 +279,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
             var il = getMethodBuilder.GetILGenerator();
 
             il.Emit(OpCodes.Ldstr, type.Name + " " + tb.Name + ".get_" + name + "()");
-            il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) }));
+            il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) })!);
 
             if (isStatic)
             {
@@ -303,7 +303,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
             var il = setMethodBuilder.GetILGenerator();
 
             il.Emit(OpCodes.Ldstr, "void " + tb.Name + ".set_" + name + "(" + type.Name + ")");
-            il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) }));
+            il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) })!);
 
             if (isStatic)
             {
@@ -323,8 +323,8 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         public static MemberDefinition Field(string name, Type type, bool isStatic = false, bool isReadOnly = false, Visibility visibility = Visibility.Private)
         {
-            if (name == null) throw new ArgumentNullException("name");
-            if (type == null) throw new ArgumentNullException("type");
+            if (name is null) throw new ArgumentNullException(nameof(name));
+            if (type is null) throw new ArgumentNullException(nameof(type));
 
             var fieldAttributes = GetFieldAttributes(visibility, isStatic, isReadOnly);
 
@@ -350,7 +350,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                     methodAttributes = MethodAttributes.Public;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException("visibility");
+                    throw new ArgumentOutOfRangeException(nameof(visibility));
             }
 
             if (!isConstructor)
@@ -380,7 +380,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                     fieldAttributes = FieldAttributes.Public;
                     break;
                 default:
-                    throw new ArgumentOutOfRangeException("visibility");
+                    throw new ArgumentOutOfRangeException(nameof(visibility));
             }
 
             if (isStatic)
@@ -398,13 +398,13 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         public static MemberDefinition NestedClass(params MemberDefinition[] memberDefinitions)
         {
-            return NestedClass(Create.RandomName(), new Type[0], Visibility.Private, memberDefinitions);
+            return NestedClass(Create.RandomName(), Array.Empty<Type>(), Visibility.Private, memberDefinitions);
         }
 
         public static MemberDefinition NestedClass(Visibility visibility,
             params MemberDefinition[] memberDefinitions)
         {
-            return NestedClass(Create.RandomName(), new Type[0], visibility, memberDefinitions);
+            return NestedClass(Create.RandomName(), Array.Empty<Type>(), visibility, memberDefinitions);
         }
 
         public static MemberDefinition NestedClass(Type[] interfaces,
@@ -422,13 +422,13 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
         public static MemberDefinition NestedClass(string name,
             params MemberDefinition[] memberDefinitions)
         {
-            return NestedClass(name, new Type[0], Visibility.Private, memberDefinitions);
+            return NestedClass(name, Array.Empty<Type>(), Visibility.Private, memberDefinitions);
         }
 
         public static MemberDefinition NestedClass(string name, Visibility visibility = Visibility.Private,
             params MemberDefinition[] memberDefinitions)
         {
-            return NestedClass(name, new Type[0], visibility, memberDefinitions);
+            return NestedClass(name, Array.Empty<Type>(), visibility, memberDefinitions);
         }
 
         public static MemberDefinition NestedClass(string name, Type[] interfaces,
@@ -449,13 +449,13 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         public static MemberDefinition NestedStruct(params MemberDefinition[] memberDefinitions)
         {
-            return NestedStruct(Create.RandomName(), new Type[0], Visibility.Private, memberDefinitions);
+            return NestedStruct(Create.RandomName(), Array.Empty<Type>(), Visibility.Private, memberDefinitions);
         }
 
         public static MemberDefinition NestedStruct(Visibility visibility = Visibility.Private,
             params MemberDefinition[] memberDefinitions)
         {
-            return NestedStruct(Create.RandomName(), new Type[0], visibility, memberDefinitions);
+            return NestedStruct(Create.RandomName(), Array.Empty<Type>(), visibility, memberDefinitions);
         }
 
         public static MemberDefinition NestedStruct(Type[] interfaces,
@@ -473,13 +473,13 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
         public static MemberDefinition NestedStruct(string name, Visibility visibility = Visibility.Private,
             params MemberDefinition[] memberDefinitions)
         {
-            return NestedStruct(name, new Type[0], visibility, memberDefinitions);
+            return NestedStruct(name, Array.Empty<Type>(), visibility, memberDefinitions);
         }
 
         public static MemberDefinition NestedStruct(string name,
             params MemberDefinition[] memberDefinitions)
         {
-            return NestedStruct(name, new Type[0], Visibility.Private, memberDefinitions);
+            return NestedStruct(name, Array.Empty<Type>(), Visibility.Private, memberDefinitions);
         }
 
         public static MemberDefinition NestedStruct(string name, Type[] interfaces,
@@ -500,11 +500,11 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         private static MemberDefinition NestedType(string name, Type[] interfaces,
             MemberDefinition[] memberDefinitions, TypeAttributes typeAttributes,
-            Visibility visibility, Type baseType = null)
+            Visibility visibility, Type? baseType = null)
         {
-            if (name == null) throw new ArgumentNullException("name");
-            if (interfaces == null) throw new ArgumentNullException("interfaces");
-            if (memberDefinitions == null) throw new ArgumentNullException("memberDefinitions");
+            if (name is null) throw new ArgumentNullException(nameof(name));
+            if (interfaces is null) throw new ArgumentNullException(nameof(interfaces));
+            if (memberDefinitions is null) throw new ArgumentNullException(nameof(memberDefinitions));
 
             typeAttributes |= GetNestedVisibility(visibility);
 
@@ -538,8 +538,8 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
         public static MemberDefinition NestedEnum(string name, Visibility visibility,
             params EnumValue[] enumValues)
         {
-            if (name == null) throw new ArgumentNullException("name");
-            if (enumValues == null) throw new ArgumentNullException("enumValues");
+            if (name is null) throw new ArgumentNullException(nameof(name));
+            if (enumValues is null) throw new ArgumentNullException(nameof(enumValues));
 
             var enumTypeAttributes = GetNestedVisibility(visibility) | TypeAttributes.Sealed;
             const FieldAttributes valueTypeAttributes = FieldAttributes.Private | FieldAttributes.SpecialName;
@@ -583,7 +583,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                 case Visibility.Public:
                     return TypeAttributes.NestedPublic;
                 default:
-                    throw new ArgumentOutOfRangeException("visibility");
+                    throw new ArgumentOutOfRangeException(nameof(visibility));
             }
         }
     }
