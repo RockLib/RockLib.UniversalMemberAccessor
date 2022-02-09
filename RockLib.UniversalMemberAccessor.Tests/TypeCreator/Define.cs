@@ -59,7 +59,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                     }
                 }
 
-                il.Emit(OpCodes.Ldstr, tb.Name + ".ctor(" + string.Join(", ", parameters.Select(p => p.Type?.Name)) + ")");
+                il.Emit(OpCodes.Ldstr, $"{tb.Name}.ctor({string.Join(", ", parameters.Select(p => p.Type?.Name))})");
                 il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) })!);
 
                 il.Emit(OpCodes.Ret);
@@ -117,7 +117,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                     }
                 }
 
-                il.Emit(OpCodes.Ldstr, "void " + tb.Name + "." + name + "(" + string.Join(", ", parameters.Select(p => p.Type?.Name)) + ")");
+                il.Emit(OpCodes.Ldstr, $"void {tb.Name}.{name}({string.Join(", ", parameters.Select(p => p.Type?.Name))})");
                 il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) })!);
 
                 il.Emit(OpCodes.Ret);
@@ -136,7 +136,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                 var methodBuilder = tb.DefineMethod(name, methodAttributes, type, new[] { type });
                 var il = methodBuilder.GetILGenerator();
 
-                il.Emit(OpCodes.Ldstr, type.Name + " " + tb.Name + "." + name + "(" + type.Name + ")");
+                il.Emit(OpCodes.Ldstr, $"{type.Name} {tb.Name}.{name}({type.Name})");
                 il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) })!);
 
                 il.Emit(isStatic ? OpCodes.Ldarg_0 : OpCodes.Ldarg_1);
@@ -207,7 +207,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
             if (name is null) throw new ArgumentNullException(nameof(name));
             if (type is null) throw new ArgumentNullException(nameof(type));
 
-            backingFieldName = backingFieldName ?? "<" + name + ">k__BackingField";
+            backingFieldName = backingFieldName ?? $"<{name}>k__BackingField"; ;
 
             var methodAttributes = GetMethodAttributes(Visibility.Public, false, isStatic)
                 | MethodAttributes.SpecialName;
@@ -232,7 +232,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
             if (name is null) throw new ArgumentNullException(nameof(name));
             if (type is null) throw new ArgumentNullException(nameof(type));
 
-            backingFieldName = backingFieldName ?? "<" + name + ">k__BackingField";
+            backingFieldName = backingFieldName ?? $"<{name}>k__BackingField";
 
             var fieldAttributes = GetFieldAttributes(Visibility.Private, isStatic, true);
             var methodAttributes = GetMethodAttributes(Visibility.Public, false, isStatic);
@@ -254,7 +254,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
             if (name is null) throw new ArgumentNullException(nameof(name));
             if (type is null) throw new ArgumentNullException(nameof(type));
 
-            backingFieldName = backingFieldName ?? "<" + name + ">k__BackingField";
+            backingFieldName = backingFieldName ?? $"<{name}>k__BackingField"; ;
 
             var fieldAttributes = GetFieldAttributes(Visibility.Private, isStatic, false);
             var methodAttributes = GetMethodAttributes(Visibility.Public, false, isStatic);
@@ -274,11 +274,11 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
         private static MethodBuilder GetGetMethodBuilder(string name, Type type, bool isStatic,
             TypeBuilder tb, MethodAttributes methodAttributes, FieldBuilder fieldBuilder)
         {
-            var getMethodBuilder = tb.DefineMethod("get_" + name,
+            var getMethodBuilder = tb.DefineMethod($"get_{name}",
                 methodAttributes, type, Type.EmptyTypes);
             var il = getMethodBuilder.GetILGenerator();
 
-            il.Emit(OpCodes.Ldstr, type.Name + " " + tb.Name + ".get_" + name + "()");
+            il.Emit(OpCodes.Ldstr, $"{type.Name} {tb.Name}.get_{name}()");
             il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) })!);
 
             if (isStatic)
@@ -298,11 +298,11 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
         private static MethodBuilder GetSetMethodBuilder(string name, Type type, bool isStatic,
             TypeBuilder tb, MethodAttributes methodAttributes, FieldBuilder fieldBuilder)
         {
-            var setMethodBuilder = tb.DefineMethod("set_" + name,
+            var setMethodBuilder = tb.DefineMethod($"set_{name}",
                 methodAttributes, null, new[] { type });
             var il = setMethodBuilder.GetILGenerator();
 
-            il.Emit(OpCodes.Ldstr, "void " + tb.Name + ".set_" + name + "(" + type.Name + ")");
+            il.Emit(OpCodes.Ldstr, $"void {tb.Name}.set_{name}({type.Name})");
             il.Emit(OpCodes.Call, typeof(Console).GetMethod("WriteLine", new[] { typeof(string) })!);
 
             if (isStatic)

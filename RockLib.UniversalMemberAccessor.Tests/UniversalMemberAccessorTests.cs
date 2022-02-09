@@ -20,7 +20,7 @@ namespace RockLib.Dynamic.UnitTests
             var testInstance1 = new HasIndexedProperty();
             var testInstance2 = new Dictionary<string, string> { { "first", "one" }, { "second", "two" }, { "third", "three" } };
 #pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
-            var testInstance3 = new string[,] { {"one", "two", "three"}, { "two", "three", "four" }, { "three", "four", "five" } };
+            var testInstance3 = new string[,] { { "one", "two", "three" }, { "two", "three", "four" }, { "three", "four", "five" } };
 #pragma warning restore CA1814 // Prefer jagged arrays over multidimensional
             var testInstance4 = new string[] { "one", "two", "three" };
 
@@ -1779,7 +1779,6 @@ namespace RockLib.Dynamic.UnitTests
 #pragma warning disable CA1822 // Mark members as static
 #pragma warning disable xUnit1013 // Public method should be marked as test
         public void Generic<T>(T t)
-#pragma warning restore xUnit1013 // Public method should be marked as test
 #pragma warning restore CA1822 // Mark members as static
         {
         }
@@ -1799,9 +1798,7 @@ namespace RockLib.Dynamic.UnitTests
         }
 
 #pragma warning disable CA1822 // Mark members as static
-#pragma warning disable xUnit1013 // Public method should be marked as test
         public void NewConstraint<T>(T t)
-#pragma warning restore xUnit1013 // Public method should be marked as test
 #pragma warning restore CA1822 // Mark members as static
             where T : new()
         {
@@ -1892,9 +1889,7 @@ namespace RockLib.Dynamic.UnitTests
         }
 
 #pragma warning disable CA1822 // Mark members as static
-#pragma warning disable xUnit1013 // Public method should be marked as test
         public void ClassConstraint<T>(T t)
-#pragma warning restore xUnit1013 // Public method should be marked as test
 #pragma warning restore CA1822 // Mark members as static
             where T : class
         {
@@ -1957,9 +1952,7 @@ namespace RockLib.Dynamic.UnitTests
         }
 
 #pragma warning disable CA1822 // Mark members as static
-#pragma warning disable xUnit1013 // Public method should be marked as test
         public void StructConstraint<T>(T t)
-#pragma warning restore xUnit1013 // Public method should be marked as test
 #pragma warning restore CA1822 // Mark members as static
             where T : struct
         {
@@ -2022,9 +2015,7 @@ namespace RockLib.Dynamic.UnitTests
         }
 
 #pragma warning disable CA1822 // Mark members as static
-#pragma warning disable xUnit1013 // Public method should be marked as test
         public void BaseClassContraint<THam>(THam tHam)
-#pragma warning restore xUnit1013 // Public method should be marked as test
 #pragma warning restore CA1822 // Mark members as static
             where THam : Ham
         {
@@ -2087,9 +2078,7 @@ namespace RockLib.Dynamic.UnitTests
         }
 
 #pragma warning disable CA1822 // Mark members as static
-#pragma warning disable xUnit1013 // Public method should be marked as test
         public void InterfaceContraint<THam>(THam tHam)
-#pragma warning restore xUnit1013 // Public method should be marked as test
 #pragma warning restore CA1822 // Mark members as static
             where THam : IHam
         {
@@ -2152,9 +2141,7 @@ namespace RockLib.Dynamic.UnitTests
         }
 
 #pragma warning disable CA1822 // Mark members as static
-#pragma warning disable xUnit1013 // Public method should be marked as test
         public void TypeParameterContraint<TBase, TDerived>(TBase tBase, TDerived tDerived)
-#pragma warning restore xUnit1013 // Public method should be marked as test
 #pragma warning restore CA1822 // Mark members as static
             where TDerived : TBase
         {
@@ -3121,12 +3108,10 @@ namespace RockLib.Dynamic.UnitTests
 
 #pragma warning disable CA1822 // Mark members as static
             public T Baz<T>() where T : new()
-#pragma warning restore CA1822 // Mark members as static
             {
                 return new T();
             }
 
-#pragma warning disable CA1822 // Mark members as static
             public T Qux<T>(string s, T tIn, ref T tOut)
 #pragma warning restore CA1822 // Mark members as static
             {
@@ -3172,9 +3157,9 @@ namespace RockLib.Dynamic.UnitTests
             }
         }
 
-#pragma warning disable
+#pragma warning disable CA1812 // Avoid uninstantiated internal classes 
         private class Bacon : Lard
-#pragma warning restore
+#pragma warning restore CA1812 // Avoid uninstantiated internal classes
         {
             public Bacon()
                 : base(false)
@@ -3264,9 +3249,10 @@ namespace RockLib.Dynamic.UnitTests
     {
         private event EventHandler? Foo;
         private static event EventHandler? Baz;
-#pragma warning disable
+#pragma warning disable CS0067 // The event is never used
         public event EventHandler? Qux;
-#pragma warning restore
+#pragma warning restore CS0067 // The event is never used
+
 
         public void InvokeFoo()
         {
