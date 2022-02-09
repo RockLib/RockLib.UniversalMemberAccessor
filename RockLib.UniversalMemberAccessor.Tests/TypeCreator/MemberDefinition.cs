@@ -13,9 +13,9 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
             _emitTo = emitTo;
         }
 
-        public void EmitTo(TypeBuilder typeBuilder, List<FieldBuilder> declaredFields)
+        public void EmitTo(TypeBuilder typeBuilder, IList<FieldBuilder> declaredFields)
         {
-            _emitTo(typeBuilder, declaredFields);
+            _emitTo(typeBuilder, (List<FieldBuilder>)declaredFields);
         }
     }
 }

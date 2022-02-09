@@ -12,7 +12,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         public static Type Class(params MemberDefinition[] memberDefinitions)
         {
-            return Class(RandomName(), new Type[0], memberDefinitions);
+            return Class(RandomName(), Array.Empty<Type>(), memberDefinitions);
         }
 
         public static Type Class(Type[] interfaces, params MemberDefinition[] memberDefinitions)
@@ -22,7 +22,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         public static Type Class(string name, params MemberDefinition[] memberDefinitions)
         {
-            return Class(name, new Type[0], memberDefinitions);
+            return Class(name, Array.Empty<Type>(), memberDefinitions);
         }
 
         public static Type Class(string name, Type[] interfaces, params MemberDefinition[] memberDefinitions)
@@ -36,7 +36,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         public static Type Struct(params MemberDefinition[] memberDefinitions)
         {
-            return Struct(RandomName(), new Type[0], memberDefinitions);
+            return Struct(RandomName(), Array.Empty<Type>(), memberDefinitions);
         }
 
         public static Type Struct(Type[] interfaces, params MemberDefinition[] memberDefinitions)
@@ -46,7 +46,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         public static Type Struct(string name, params MemberDefinition[] memberDefinitions)
         {
-            return Struct(name, new Type[0], memberDefinitions);
+            return Struct(name, Array.Empty<Type>(), memberDefinitions);
         }
 
         public static Type Struct(string name, Type[] interfaces, params MemberDefinition[] memberDefinitions)
@@ -60,17 +60,13 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
         private static Type Type(
             string name, Type[] interfaces, MemberDefinition[] memberDefinitions,
-            TypeAttributes typeAttributes, Type baseType = null)
+            TypeAttributes typeAttributes, Type? baseType = null)
         {
-            if (name == null) throw new ArgumentNullException("name");
-            if (interfaces == null) throw new ArgumentNullException("interfaces");
-            if (memberDefinitions == null) throw new ArgumentNullException("memberDefinitions");
+            if (name is null) throw new ArgumentNullException(nameof(name));
+            if (interfaces is null) throw new ArgumentNullException(nameof(interfaces));
+            if (memberDefinitions is null) throw new ArgumentNullException(nameof(memberDefinitions));
 
-#if NET40
-            var assemblyBuilder = AppDomain.CurrentDomain.DefineDynamicAssembly(
-#else
             var assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(
-#endif
                 new AssemblyName(name), AssemblyBuilderAccess.Run);
 
             var moduleBuilder = assemblyBuilder.DefineDynamicModule("MainModule");
@@ -90,7 +86,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                 Define.Constructor().EmitTo(typeBuilder, fields);
             }
 
-            return typeBuilder.CreateType();
+            return typeBuilder.CreateType()!;
         }
 
         internal static string RandomName()
@@ -100,6 +96,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
             return new string(new[]
             {
+#pragma warning disable CA5394
                 (char)_random.Next(65, 92),
                 (char)_random.Next(min, max),
                 (char)_random.Next(min, max),
@@ -108,6 +105,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
                 (char)_random.Next(min, max),
                 (char)_random.Next(min, max),
                 (char)_random.Next(min, max)
+#pragma warning restore CA5394
             });
         }
     }

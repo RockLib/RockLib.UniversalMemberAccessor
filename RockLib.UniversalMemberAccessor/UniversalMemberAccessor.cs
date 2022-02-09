@@ -1,7 +1,9 @@
-﻿using System;
+﻿using Microsoft.CSharp.RuntimeBinder;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Dynamic;
 using System.Linq;
 using System.Linq.Expressions;
@@ -10,7 +12,6 @@ using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using Microsoft.CSharp.RuntimeBinder;
 
 namespace RockLib.Dynamic
 {
@@ -44,13 +45,15 @@ namespace RockLib.Dynamic
         private static readonly ConcurrentDictionary<InvokeMethodDefinition, Func<object, object[], object>> _invokeMethodFuncs = new ConcurrentDictionary<InvokeMethodDefinition, Func<object, object[], object>>();
         private static readonly ConcurrentDictionary<CreateInstanceDefinition, Func<object[], object>> _createInstanceFuncs = new ConcurrentDictionary<CreateInstanceDefinition, Func<object[], object>>();
 
-        private readonly object _instance;
+        private readonly object? _instance;
         private readonly Lazy<UniversalMemberAccessor> _base;
         private readonly Type _type;
         private readonly List<PropertyInfo> _indexers;
         private readonly IEnumerable<string> _memberNames;
 
+#pragma warning disable CA1810 // Initialize reference type static fields inline
         static UniversalMemberAccessor()
+#pragma warning restore CA1810 // Initialize reference type static fields inline
         {
             // Need to figure out if the current runtime supports setting readonly fields given two variables: 1) whether
             // the field is static or instance, and 2) whether the field's type is a value type or reference type.
@@ -68,40 +71,40 @@ namespace RockLib.Dynamic
 
             try
             {
-                staticValueTypeField.SetValue(null, 9);
+                staticValueTypeField?.SetValue(null, 9);
                 _canSetReadonlyStaticValueType = (ReadonlyFields.StaticValueType != initialStaticValueType);
             }
-            catch
+            catch (Exception ex) when (ex is FieldAccessException || ex is TargetException || ex is ArgumentException)
             {
                 _canSetReadonlyStaticValueType = false;
             }
 
             try
             {
-                staticReferenceTypeField.SetValue(null, "Z");
+                staticReferenceTypeField?.SetValue(null, "Z");
                 _canSetReadonlyStaticReferenceType = (ReadonlyFields.StaticReferenceType != initialStaticReferenceType);
             }
-            catch
+            catch (Exception ex) when (ex is FieldAccessException || ex is TargetException || ex is ArgumentException)
             {
                 _canSetReadonlyStaticReferenceType = false;
             }
 
             try
             {
-                instanceValueTypeField.SetValue(readonlyFields, 8);
+                instanceValueTypeField?.SetValue(readonlyFields, 8);
                 _canSetReadonlyInstanceValueType = (readonlyFields.InstanceValueType != initialInstanceValueType);
             }
-            catch
+            catch (Exception ex) when (ex is FieldAccessException || ex is TargetException || ex is ArgumentException)
             {
                 _canSetReadonlyInstanceValueType = false;
             }
 
             try
             {
-                instanceReferenceTypeField.SetValue(readonlyFields, "Y");
+                instanceReferenceTypeField?.SetValue(readonlyFields, "Y");
                 _canSetReadonlyInstanceReferenceType = (readonlyFields.InstanceReferenceType != initialInstanceReferenceType);
             }
-            catch
+            catch (Exception ex) when (ex is FieldAccessException || ex is TargetException || ex is ArgumentException)
             {
                 _canSetReadonlyInstanceReferenceType = false;
             }
@@ -110,11 +113,11 @@ namespace RockLib.Dynamic
             // Note that Visual Basic's late binding does not support generic type arguments.
             var cSharpBinderType = Type.GetType("Microsoft.CSharp.RuntimeBinder.ICSharpInvokeOrInvokeMemberBinder, Microsoft.CSharp, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a");
 
-            if (cSharpBinderType != null)
+            if (cSharpBinderType is not null)
             {
                 var property = cSharpBinderType.GetProperty("TypeArguments");
 
-                if (property != null && typeof(IList<Type>).IsAssignableFrom(property.PropertyType))
+                if (property is not null && typeof(IList<Type>).IsAssignableFrom(property.PropertyType))
                 {
                     var binderParameter = Expression.Parameter(typeof(InvokeMemberBinder), "binder");
 
@@ -125,7 +128,7 @@ namespace RockLib.Dynamic
                         binderParameter);
 
                     var getTypeArguments = lambda.Compile();
-                    var empty = new Type[0];
+                    var empty = Array.Empty<Type>();
 
                     _getCSharpTypeArguments = binder =>
                         cSharpBinderType.IsInstanceOfType(binder)
@@ -134,9 +137,9 @@ namespace RockLib.Dynamic
                 }
             }
 
-            if (_getCSharpTypeArguments == null)
+            if (_getCSharpTypeArguments is null)
             {
-                var empty = new Type[0];
+                var empty = Array.Empty<Type>();
                 _getCSharpTypeArguments = binder => empty;
             }
         }
@@ -146,13 +149,13 @@ namespace RockLib.Dynamic
             _type = type;
             _indexers = _type.GetProperties().Where(p => p.Name == "Item").ToList();
 
-            if (_type.BaseType != null)
+            if (_type.BaseType is not null)
             {
-                _base = new Lazy<UniversalMemberAccessor>(() => new UniversalMemberAccessor(_instance, _type.BaseType));
+                _base = new Lazy<UniversalMemberAccessor>(() => new UniversalMemberAccessor(_instance!, _type.BaseType));
             }
             else
             {
-                _base = new Lazy<UniversalMemberAccessor>(() => null);
+                _base = new Lazy<UniversalMemberAccessor>(() => null!);
             }
 
             _memberNames = _staticMemberNamesCache.GetOrAdd(_type, t =>
@@ -163,19 +166,19 @@ namespace RockLib.Dynamic
                     .AsReadOnly());
         }
 
-        private UniversalMemberAccessor(object instance, Type type = null)
+        private UniversalMemberAccessor(object instance, Type type = null!)
         {
-            _instance = instance;
-            _type = type ?? instance.GetType();
+            _instance = instance!;
+            _type = type ?? instance!.GetType();
             _indexers = _type.GetProperties().Where(p => p.Name == "Item").ToList();
 
-            if (_type.BaseType != null)
+            if (_type.BaseType is not null)
             {
                 _base = new Lazy<UniversalMemberAccessor>(() => new UniversalMemberAccessor(_instance, _type.BaseType));
             }
             else
             {
-                _base = new Lazy<UniversalMemberAccessor>(() => null);
+                _base = new Lazy<UniversalMemberAccessor>(() => null!);
             }
 
             _memberNames = _instanceMemberNamesCache.GetOrAdd(_type, t =>
@@ -201,9 +204,9 @@ namespace RockLib.Dynamic
         /// </returns>
         public static dynamic Get(object instance)
         {
-            if (instance == null)
+            if (instance is null)
             {
-                return null;
+                return null!;
             }
 
             if (instance.GetType().IsValueType)
@@ -222,7 +225,7 @@ namespace RockLib.Dynamic
         /// <returns>A dynamic proxy object enabling access to all static members of the given type.</returns>
         public static dynamic GetStatic(Type type)
         {
-            if (type == null) throw new ArgumentNullException("type");
+            if (type is null) throw new ArgumentNullException(nameof(type));
 
             return _staticCache.GetOrAdd(type, t => new UniversalMemberAccessor(t));
         }
@@ -254,24 +257,24 @@ namespace RockLib.Dynamic
         /// <remarks>This is a very dangerous method - use with caution.</remarks>
         public static dynamic GetStatic(string assemblyQualifiedName)
         {
-            return GetStatic(Type.GetType(assemblyQualifiedName, true));
+            return GetStatic(Type.GetType(assemblyQualifiedName, true)!);
         }
 
         /// <inheritdoc />
-        public override string ToString()
+        public override string? ToString()
         {
-            return _instance != null ? _instance.ToString() : _type.ToString();
+            return _instance is not null ? _instance.ToString() : _type.ToString();
         }
 
         /// <inheritdoc />
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
-            if (_instance != null)
+            if (_instance is not null)
             {
                 var other = obj as UniversalMemberAccessor;
-                if (other != null)
+                if (other is not null)
                 {
-                    if (other._instance != null)
+                    if (other._instance is not null)
                     {
                         return _instance.Equals(other._instance);
                     }
@@ -282,9 +285,9 @@ namespace RockLib.Dynamic
             else
             {
                 var other = obj as UniversalMemberAccessor;
-                if (other != null)
+                if (other is not null)
                 {
-                    if (other._instance == null)
+                    if (other._instance is null)
                     {
                         return _type.Equals((object)other._type);
                     }
@@ -297,7 +300,7 @@ namespace RockLib.Dynamic
         /// <inheritdoc />
         public override int GetHashCode()
         {
-            return _instance != null ? _instance.GetHashCode() : _type.GetHashCode();
+            return _instance is not null ? _instance.GetHashCode() : _type.GetHashCode();
         }
 
         /// <summary>
@@ -308,8 +311,13 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
-        public override bool TryGetMember(GetMemberBinder binder, out object result)
+        public override bool TryGetMember(GetMemberBinder binder, out object? result)
         {
+            if (binder is null)
+            {
+                throw new ArgumentNullException(nameof(binder));
+            }
+
             Func<object, object> getMember;
 
             if (!TryGetGetMemberFunc(binder.Name, out getMember))
@@ -319,7 +327,7 @@ namespace RockLib.Dynamic
                     case "Instance":
                     case "Object":
                     case "Value":
-                        if (_instance != null)
+                        if (_instance is not null)
                         {
                             result = _instance;
                             return true;
@@ -328,7 +336,7 @@ namespace RockLib.Dynamic
                     case "Base":
                     case "BaseType":
                     case "BaseClass":
-                        if (_base != null)
+                        if (_base is not null)
                         {
                             result = _base.Value;
                             return true;
@@ -339,7 +347,7 @@ namespace RockLib.Dynamic
                 return base.TryGetMember(binder, out result);
             }
 
-            result = getMember(_instance);
+            result = getMember(_instance!);
             return true;
         }
 
@@ -350,7 +358,7 @@ namespace RockLib.Dynamic
                     Tuple.Create(_type, name),
                     t => CreateGetMemberFunc(t.Item2));
 
-            return getMember != null;
+            return getMember is not null;
         }
 
         /// <summary>
@@ -361,8 +369,13 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
-        public override bool TrySetMember(SetMemberBinder binder, object value)
+        public override bool TrySetMember(SetMemberBinder binder, object? value)
         {
+            if (binder is null)
+            {
+                throw new ArgumentNullException(nameof(binder));
+            }
+
             Action<object, object> setMember;
             var valueType = GetValueType(value);
 
@@ -371,31 +384,31 @@ namespace RockLib.Dynamic
                 return base.TrySetMember(binder, value);
             }
 
-            setMember(_instance, value);
+            setMember(_instance!, value!);
             return true;
         }
 
-        private static Type GetValueType(object value)
+        private static Type? GetValueType(object? value)
         {
             return
-                value == null
+                value is null
                     ? null
                     : value is UniversalMemberAccessor
-                        ? ((UniversalMemberAccessor)value)._instance.GetType()
+                        ? ((UniversalMemberAccessor)value)._instance!.GetType()
                         : value.GetType();
         }
 
-        private bool TryGetSetMemberAction(string name, Type valueType, out Action<object, object> setMember)
+        private bool TryGetSetMemberAction(string name, Type? valueType, out Action<object, object> setMember)
         {
             setMember = _setMemberActions.GetOrAdd(
-                Tuple.Create(_type, name, valueType),
+                Tuple.Create(_type, name, valueType)!,
                 t => CreateSetMemberAction(t.Item2, t.Item3));
 
-            return setMember != null;
+            return setMember is not null;
         }
 
         /// <summary>
-        /// Provides the implementation for operations that invoke a member. Classes derived from the <see cref="T:System.Dynamic.DynamicObject"/> class can override this method to specify dynamic behavior for operations such as calling a method.
+        /// Provides the implementation for operations that invoke a member. Classes derived from the <see cref="System.Dynamic.DynamicObject"/> class can override this method to specify dynamic behavior for operations such as calling a method.
         /// </summary>
         /// <param name="binder">Provides information about the dynamic operation.</param>
         /// <param name="args">The arguments that are passed to the object member during the invoke operation.</param>
@@ -405,16 +418,21 @@ namespace RockLib.Dynamic
         /// </returns>
         public override bool TryInvokeMember(
             InvokeMemberBinder binder,
-            object[] args,
-            out object result)
+            object?[]? args,
+            out object? result)
         {
+            if (binder is null)
+            {
+                throw new ArgumentNullException(nameof(binder));
+            }
+
             var typeArguments = _getCSharpTypeArguments(binder);
 
             var invokeMethodFunc = _invokeMethodFuncs.GetOrAdd(
-                new InvokeMethodDefinition(_type, binder.Name, typeArguments, args),
+                new InvokeMethodDefinition(_type, binder.Name, typeArguments, args!),
                 CreateInvokeMethodFunc);
 
-            result = invokeMethodFunc(_instance, args);
+            result = invokeMethodFunc(_instance!, args!);
             return true;
         }
 
@@ -427,11 +445,11 @@ namespace RockLib.Dynamic
 
         private class TaskTypeComparer : IComparer<Type>
         {
-            public int Compare(Type x, Type y)
+            public int Compare(Type? x, Type? y)
             {
-                if (x.IsAssignableFrom(y))
+                if (x!.IsAssignableFrom(y))
                     return 1;
-                if (y.IsAssignableFrom(x))
+                if (y!.IsAssignableFrom(x))
                     return -1;
                 return 0;
             }
@@ -442,7 +460,7 @@ namespace RockLib.Dynamic
             if (legalCandidates.All(c => typeof(Task).IsAssignableFrom(c.Method.DeclaringType) && c.Method.Name == "GetAwaiter" && c.Method.GetParameters().Length == 0))
             {
                 // return the candidate whose declaringtype is the most-derived
-                return legalCandidates.OrderBy(x => x.Method.DeclaringType, new TaskTypeComparer()).Take(1).ToList();
+                return legalCandidates.OrderBy(x => x.Method.DeclaringType, new TaskTypeComparer()!).Take(1).ToList();
             }
 
             var isBestCandidate = Enumerable.Repeat(true, legalCandidates.Count).ToList();
@@ -489,8 +507,13 @@ namespace RockLib.Dynamic
         public override bool TryGetIndex(
             GetIndexBinder binder,
             object[] indexes,
-            out object result)
+            out object? result)
         {
+            if (indexes is null)
+            {
+                throw new ArgumentNullException(nameof(indexes));
+            }
+
             if (indexes.Length == 1
                 && indexes[0] is string)
             {
@@ -498,12 +521,12 @@ namespace RockLib.Dynamic
 
                 if (TryGetGetMemberFunc((string)indexes[0], out getMember))
                 {
-                    result = getMember(_instance);
+                    result = getMember(_instance!);
                     return true;
                 }
             }
 
-            if (_indexers != null)
+            if (_indexers is not null)
             {
                 if (_indexers.Count == 1)
                 {
@@ -514,7 +537,7 @@ namespace RockLib.Dynamic
                 foreach (var indexer in _indexers)
                 {
                     var getMethod = indexer.GetGetMethod();
-                    var parameters = getMethod.GetParameters();
+                    var parameters = getMethod!.GetParameters();
                     if (parameters.Length == indexes.Length)
                     {
                         var foundMatch = true;
@@ -538,7 +561,7 @@ namespace RockLib.Dynamic
 
             if (_type.IsArray)
             {
-                result = ((Array)_instance).GetValue(indexes.Cast<int>().ToArray());
+                result = ((Array)_instance!).GetValue(indexes.Cast<int>().ToArray());
                 return true;
             }
 
@@ -557,8 +580,13 @@ namespace RockLib.Dynamic
         public override bool TrySetIndex(
             SetIndexBinder binder,
             object[] indexes,
-            object value)
+            object? value)
         {
+            if (indexes is null)
+            {
+                throw new ArgumentNullException(nameof(indexes));
+            }
+
             if (indexes.Length == 1
                 && indexes[0] is string)
             {
@@ -567,12 +595,12 @@ namespace RockLib.Dynamic
 
                 if (TryGetSetMemberAction((string)indexes[0], valueType, out setMember))
                 {
-                    setMember(_instance, value);
+                    setMember(_instance!, value!);
                     return true;
                 }
             }
 
-            if (_indexers != null)
+            if (_indexers is not null)
             {
                 if (_indexers.Count == 1)
                 {
@@ -583,7 +611,7 @@ namespace RockLib.Dynamic
                 foreach (var indexer in _indexers)
                 {
                     var setMethod = indexer.GetSetMethod();
-                    var parameters = setMethod.GetParameters();
+                    var parameters = setMethod!.GetParameters();
                     if (parameters.Length == indexes.Length + 1)
                     {
                         var foundMatch = true;
@@ -607,7 +635,7 @@ namespace RockLib.Dynamic
 
             if (_type.IsArray)
             {
-                ((Array)_instance).SetValue(value, indexes.Cast<int>().ToArray());
+                ((Array)_instance!).SetValue(value, indexes.Cast<int>().ToArray());
                 return true;
             }
 
@@ -626,13 +654,17 @@ namespace RockLib.Dynamic
             ConvertBinder binder,
             out object result)
         {
-            if (!binder.ReturnType.IsAssignableFrom(_type))
+            if (binder is null)
             {
-                throw new RuntimeBinderException(string.Format(
-                    "Cannot implicitly convert type '{0}' to '{1}'", _type, binder.ReturnType));
+                throw new ArgumentNullException(nameof(binder));
             }
 
-            result = _instance;
+            if (!binder.ReturnType.IsAssignableFrom(_type))
+            {
+                throw new RuntimeBinderException($"Cannot implicitly convert type '{_type}' to '{binder.ReturnType}'");
+            }
+
+            result = _instance!;
             return true;
         }
 
@@ -650,7 +682,7 @@ namespace RockLib.Dynamic
         private Func<object, object> CreateGetMemberFunc(string name)
         {
             var nestedType = _type.GetNestedType(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static);
-            if (nestedType != null)
+            if (nestedType is not null)
             {
                 var staticAccessor = GetStatic(nestedType);
                 return obj => staticAccessor;
@@ -661,9 +693,9 @@ namespace RockLib.Dynamic
 
             var propertyOrField = GetPropertyOrFieldGetterExpression(_type, name, convertParameter);
 
-            if (propertyOrField == null)
+            if (propertyOrField is null)
             {
-                return null;
+                return null!;
             }
 
             var type = propertyOrField.Type;
@@ -691,14 +723,14 @@ namespace RockLib.Dynamic
         private Expression GetPropertyOrFieldGetterExpression(Type type, string name, Expression convertParameter)
         {
             var propertyInfo = type.GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-            if (propertyInfo != null)
+            if (propertyInfo is not null)
             {
                 return Expression.Property(IsStatic(propertyInfo) ? null : convertParameter, propertyInfo);
             }
             else
             {
                 var fieldInfo = type.GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-                if (fieldInfo != null)
+                if (fieldInfo is not null)
                 {
                     return Expression.Field(fieldInfo.IsStatic ? null : convertParameter, fieldInfo);
                 }
@@ -706,9 +738,9 @@ namespace RockLib.Dynamic
                 {
                     if (type.BaseType != typeof(object))
                     {
-                        return GetPropertyOrFieldGetterExpression(type.BaseType, name, convertParameter);
+                        return GetPropertyOrFieldGetterExpression(type.BaseType!, name, convertParameter);
                     }
-                    return null;
+                    return null!;
                 }
             }
         }
@@ -716,29 +748,29 @@ namespace RockLib.Dynamic
         private static void GetPropertyOrField(Type type, string name, out PropertyInfo property, out FieldInfo field)
         {
             var propertyInfo = type.GetProperty(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-            if (propertyInfo != null)
+            if (propertyInfo is not null)
             {
                 property = propertyInfo;
-                field = null;
+                field = null!;
             }
             else
             {
                 var fieldInfo = type.GetField(name, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static);
-                if (fieldInfo != null)
+                if (fieldInfo is not null)
                 {
-                    property = null;
+                    property = null!;
                     field = fieldInfo;
                 }
                 else
                 {
                     if (type.BaseType != typeof(object))
                     {
-                        GetPropertyOrField(type.BaseType, name, out property, out field);
+                        GetPropertyOrField(type.BaseType!, name, out property, out field);
                     }
                     else
                     {
-                        property = null;
-                        field = null;
+                        property = null!;
+                        field = null!;
                     }
                 }
             }
@@ -751,7 +783,7 @@ namespace RockLib.Dynamic
 
             var convertInstanceParameter = Expression.Convert(instanceParameter, _type);
 
-            Action<object, object> action = null;
+            Action<object, object> action = null!;
 
             Expression propertyOrField;
             PropertyInfo propertyInfo;
@@ -759,19 +791,19 @@ namespace RockLib.Dynamic
 
             GetPropertyOrField(_type, name, out propertyInfo, out fieldInfo);
 
-            if (propertyInfo != null)
+            if (propertyInfo is not null)
             {
-                if (valueType != null)
+                if (valueType is not null)
                 {
                     if (!CanBeAssigned(propertyInfo.PropertyType, valueType, Type.EmptyTypes))
                     {
-                        var message = string.Format("Cannot implicitly convert type '{0}' to '{1}'", valueType, propertyInfo.PropertyType);
+                        var message = $"Cannot implicitly convert type '{valueType}' to '{propertyInfo.PropertyType}'";
                         return (instance, value) => { throw new RuntimeBinderException(message); };
                     }
                 }
                 else if (!CanBeAssignedNull(propertyInfo.PropertyType))
                 {
-                    var message = string.Format("Cannot convert null to '{0}' because it is a non-nullable value type", propertyInfo.PropertyType);
+                    var message = $"Cannot convert null to '{propertyInfo.PropertyType}' because it is a non-nullable value type";
                     return (instance, value) => { throw new RuntimeBinderException(message); };
                 }
 
@@ -779,19 +811,19 @@ namespace RockLib.Dynamic
             }
             else
             {
-                if (fieldInfo != null)
+                if (fieldInfo is not null)
                 {
-                    if (valueType != null)
+                    if (valueType is not null)
                     {
                         if (!CanBeAssigned(fieldInfo.FieldType, valueType, Type.EmptyTypes))
                         {
-                            var message = string.Format("Cannot implicitly convert type '{0}' to '{1}'", valueType, fieldInfo.FieldType);
+                            var message = $"Cannot implicitly convert type '{valueType}' to '{fieldInfo.FieldType}'";
                             return (instance, value) => { throw new RuntimeBinderException(message); };
                         }
                     }
                     else if (!CanBeAssignedNull(fieldInfo.FieldType))
                     {
-                        var message = string.Format("Cannot convert null to '{0}' because it is a non-nullable value type", fieldInfo.FieldType);
+                        var message = $"Cannot convert null to '{fieldInfo.FieldType}' because it is a non-nullable value type";
                         return (instance, value) => { throw new RuntimeBinderException(message); };
                     }
 
@@ -804,13 +836,13 @@ namespace RockLib.Dynamic
                         {
                             var staticOrInstance = fieldInfo.IsStatic ? "static" : "instance";
                             var valueOrReference = fieldInfo.FieldType.IsValueType ? "value" : "reference";
-                            var message = string.Format("The current runtime does not allow the (illegal) changing of readonly {0} {1}-type fields.", staticOrInstance, valueOrReference);
+                            var message = $"The current runtime does not allow the (illegal) changing of readonly {staticOrInstance} {valueOrReference}-type fields.";
 
                             return (instance, value) => { throw new NotSupportedException(message); };
                         }
 
                         var dynamicMethod = new DynamicMethod("", typeof(void),
-                            new[] { typeof(object), typeof(object) }, fieldInfo.DeclaringType);
+                            new[] { typeof(object), typeof(object) }, fieldInfo.DeclaringType!);
 
                         var il = dynamicMethod.GetILGenerator();
 
@@ -818,7 +850,7 @@ namespace RockLib.Dynamic
                         {
                             // Load the first arg (should not do for static field)
                             il.Emit(OpCodes.Ldarg_0);
-                            il.Emit(OpCodes.Castclass, fieldInfo.DeclaringType);
+                            il.Emit(OpCodes.Castclass, fieldInfo.DeclaringType!);
                         }
 
                         // Load the second arg
@@ -827,7 +859,7 @@ namespace RockLib.Dynamic
                         if (fieldInfo.FieldType.IsValueType)
                         {
                             // Unbox value types.
-                            if (valueType == fieldInfo.FieldType || valueType == null)
+                            if (valueType == fieldInfo.FieldType || valueType is null)
                             {
                                 // Unbox as the field type when value type matches or is null.
                                 il.Emit(OpCodes.Unbox_Any, fieldInfo.FieldType);
@@ -850,7 +882,7 @@ namespace RockLib.Dynamic
                         il.Emit(OpCodes.Ret);
 
                         action = (Action<object, object>)dynamicMethod.CreateDelegate(typeof(Action<object, object>));
-                        propertyOrField = null;
+                        propertyOrField = null!;
                     }
                     else
                     {
@@ -859,17 +891,17 @@ namespace RockLib.Dynamic
                 }
                 else
                 {
-                    return null;
+                    return null!;
                 }
             }
 
-            if (action == null)
+            if (action is null)
             {
                 Expression newValue;
 
                 if (propertyOrField.Type.IsValueType)
                 {
-                    if (valueType == propertyOrField.Type || valueType == null)
+                    if (valueType == propertyOrField.Type || valueType is null)
                     {
                         newValue = Expression.Unbox(valueParameter, propertyOrField.Type);
                     }
@@ -918,10 +950,7 @@ namespace RockLib.Dynamic
 
             if (candidates.Count == 0)
             {
-                var message = string.Format(
-                    "'{0}' does not contain a constructor that takes {1} arguments",
-                    definition.Type,
-                    definition.ArgTypes.Length);
+                var message = $"'{definition.Type}' does not contain a constructor that takes {definition.ArgTypes.Length} arguments";
 
                 return args => { throw new RuntimeBinderException(message); };
             }
@@ -932,10 +961,11 @@ namespace RockLib.Dynamic
             {
                 var method = candidates[0].Method.ToString();
 
-                var message = string.Format(
-                    "The best overloaded constructor match for '{0}.{1}' has some invalid arguments",
-                    definition.Type,
-                    method.Substring(method.IndexOf(".ctor")).Replace(".ctor", definition.Type.Name));
+#if NET48
+                var message = $"The best overloaded constructor match for '{definition.Type}.{method.Substring(method.IndexOf(".ctor", StringComparison.Ordinal)).Replace(".ctor", definition.Type.Name)}' has some invalid arguments";
+#else
+                var message = $"The best overloaded constructor match for '{definition.Type}.{method?[method.IndexOf(".ctor", StringComparison.Ordinal)..].Replace(".ctor", definition.Type.Name!, StringComparison.Ordinal)}' has some invalid arguments";
+#endif
 
                 return args => { throw new RuntimeBinderException(message); };
             }
@@ -959,11 +989,11 @@ namespace RockLib.Dynamic
                     var method0 = candidates[0].Method.ToString();
                     var method1 = candidates[1].Method.ToString();
 
-                    var message = string.Format(
-                        "The call is ambiguous between the following methods or properties: '{0}.{1}' and '{0}.{2}'",
-                        definition.Type,
-                        method0.Substring(method0.IndexOf(".ctor")).Replace(".ctor", definition.Type.Name),
-                        method1.Substring(method1.IndexOf(".ctor")).Replace(".ctor", definition.Type.Name));
+#if NET48
+                    var message = $"The call is ambiguous between the following methods or properties: '{definition.Type}.{method0.Substring(method0.IndexOf(".ctor", StringComparison.Ordinal)).Replace(".ctor", definition.Type.Name)}' and '{definition.Type}.{method1.Substring(method1.IndexOf(".ctor", StringComparison.Ordinal)).Replace(".ctor", definition.Type.Name)}'";
+#else
+                    var message = $"The call is ambiguous between the following methods or properties: '{definition.Type}.{method0?[method0.IndexOf(".ctor", StringComparison.Ordinal)..].Replace(".ctor", definition.Type.Name!, StringComparison.Ordinal)}' and '{definition.Type}.{method1?[method1.IndexOf(".ctor", StringComparison.Ordinal)..].Replace(".ctor", definition.Type.Name!, StringComparison.Ordinal)}'";
+#endif
 
                     return args => { throw new RuntimeBinderException(message); };
                 }
@@ -978,7 +1008,7 @@ namespace RockLib.Dynamic
 
             Expression body = Expression.New(constructor, newArguments);
 
-            if (constructor.DeclaringType.IsValueType)
+            if (constructor.DeclaringType!.IsValueType)
             {
                 body = Expression.Convert(body, typeof(object));
             }
@@ -1026,7 +1056,7 @@ namespace RockLib.Dynamic
                     case "CreateInstance":
                     case "NewInstance":
                         var createInstanceFunc = _createInstanceFuncs.GetOrAdd(
-                            new CreateInstanceDefinition(definition.Type, definition.ArgTypes),
+                            new CreateInstanceDefinition(definition.Type, definition.ArgTypes!),
                             CreateCreateInstanceFunc);
 
                         return (instance, args) => createInstanceFunc(args);
@@ -1044,7 +1074,7 @@ namespace RockLib.Dynamic
             }
             else
             {
-                var betterMethods = GetBetterMethods(definition.ArgTypes, legalCandidates);
+                var betterMethods = GetBetterMethods(definition.ArgTypes!, legalCandidates);
 
                 if (betterMethods.Count == 1)
                 {
@@ -1055,10 +1085,11 @@ namespace RockLib.Dynamic
                     var method0 = legalCandidates[0].Method.ToString();
                     var method1 = legalCandidates[1].Method.ToString();
 
-                    var message = string.Format(
-                        "The call is ambiguous between the following methods or properties: '{0}' and '{1}'",
-                        method0.Substring(method0.IndexOf(' ') + 1),
-                        method1.Substring(method1.IndexOf(' ') + 1));
+#if NET48
+                    var message = $"The call is ambiguous between the following methods or properties: '{method0.Substring(method0.IndexOf(' ') + 1)}' and '{method1.Substring(method1.IndexOf(' ') + 1)}'";
+#else
+                    var message = $"The call is ambiguous between the following methods or properties: '{method0?[(method0.IndexOf(' ', StringComparison.Ordinal) + 1)..]}' and '{method1?[(method1.IndexOf(' ', StringComparison.Ordinal) + 1)..]}'";
+#endif
 
                     return (instance, args) => { throw new RuntimeBinderException(message); };
                 }
@@ -1070,7 +1101,7 @@ namespace RockLib.Dynamic
             var argsParameter = Expression.Parameter(typeof(object[]), "args");
 
             var methodInfoParameters = methodInfo.GetParameters();
-            var callArguments = GetArguments(methodInfoParameters, argsParameter, definition.ArgTypes, definition.TypeArguments);
+            var callArguments = GetArguments(methodInfoParameters, argsParameter, definition.ArgTypes!, definition.TypeArguments);
 
             var localVariables = new List<ParameterExpression>();
             var assignToVariables = new List<Expression>();
@@ -1129,12 +1160,12 @@ namespace RockLib.Dynamic
                                 parameterType = parameterType.GetElementType();
                             }
 
-                            var genericParameter = GetGenericParameters(parameterType, definitionType)
+                            var genericParameter = GetGenericParameters(parameterType!, definitionType!)
                                 .Where(t => t.Item1.Name == typeArgumentName)
                                 .Select(t => t.Item2)
                                 .FirstOrDefault();
 
-                            if (genericParameter != null)
+                            if (genericParameter is not null)
                             {
                                 typeArguments[i] = genericParameter;
                                 break;
@@ -1181,7 +1212,7 @@ namespace RockLib.Dynamic
             {
                 var blockExpressions = assignToVariables.ToList();
 
-                ParameterExpression returnValue = null;
+                ParameterExpression returnValue = null!;
 
                 if (methodInfo.ReturnType != typeof(void))
                 {
@@ -1193,7 +1224,7 @@ namespace RockLib.Dynamic
                 blockExpressions.Add(call);
                 blockExpressions.AddRange(assignToArgs);
 
-                if (returnValue != null)
+                if (returnValue is not null)
                 {
                     blockExpressions.Add(
                         methodInfo.ReturnType.IsValueType
@@ -1226,13 +1257,13 @@ namespace RockLib.Dynamic
                     .Where(m => m.Name == definition.Name);
 
             var candidates = methodInfos.Select(c => new Candidate(c))
-                .Where(c => c.HasRequiredNumberOfParameters(definition.ArgTypes)).ToList();
+                .Where(c => c.HasRequiredNumberOfParameters(definition.ArgTypes!)).ToList();
 
-            var legalCandidates = candidates.Where(c => c.IsLegal(definition.ArgTypes, definition.TypeArguments)).ToList();
+            var legalCandidates = candidates.Where(c => c.IsLegal(definition.ArgTypes!, definition.TypeArguments)).ToList();
 
             if (legalCandidates.Count > 0)
             {
-                getErrorMessage = () => null;
+                getErrorMessage = () => null!;
                 return legalCandidates;
             }
 
@@ -1240,23 +1271,23 @@ namespace RockLib.Dynamic
             {
                 if (candidates.Count == 0)
                 {
-                    getErrorMessage = () => string.Format("No overload for method '{0}' takes {1} arguments",
-                        definition.Name, definition.ArgTypes.Length);
+                    getErrorMessage = () => $"No overload for method '{definition.Name}' takes {definition.ArgTypes.Length} arguments";
                 }
                 else
                 {
                     var method = candidates[0].Method.ToString();
 
-                    getErrorMessage = () => string.Format(
-                        "The best overloaded method match for '{0}.{1}' has some invalid arguments",
-                        definition.Type,
-                        method.Substring(method.IndexOf(' ') + 1));
+#if NET48
+                    getErrorMessage = () => $"The best overloaded method match for '{definition.Type}.{method?.Substring(method.IndexOf(' ') + 1)}' has some invalid arguments";
+#else
+                    getErrorMessage = () => $"The best overloaded method match for '{definition.Type}.{method?.Substring(method.IndexOf(' ', StringComparison.Ordinal) + 1)}' has some invalid arguments";
+#endif
                 }
 
                 return legalCandidates;
             }
 
-            return GetLegalCandidates(type.BaseType, definition, out getErrorMessage);
+            return GetLegalCandidates(type.BaseType!, definition, out getErrorMessage);
         }
 
         private static Expression[] GetArguments(ParameterInfo[] parameters,
@@ -1277,15 +1308,15 @@ namespace RockLib.Dynamic
                         parameterType = parameterType.GetElementType();
                     }
 
-                    if (GetGenericParameters(parameterType, null).Any())
+                    if (GetGenericParameters(parameterType!, null!).Any())
                     {
                         if (typeArguments.Count > 0)
                         {
-                            parameterType = CloseGenericType(parameterType, typeArguments);
+                            parameterType = CloseGenericType(parameterType!, typeArguments);
                         }
                         else
                         {
-                            if (argTypes[i] == null)
+                            if (argTypes[i] is null)
                             {
                                 skippedIndexes.Add(i);
                                 continue;
@@ -1295,7 +1326,7 @@ namespace RockLib.Dynamic
                         }
                     }
 
-                    SetArgumentsItem(argsParameter, argTypes, i, parameterType, arguments);
+                    SetArgumentsItem(argsParameter, argTypes, i, parameterType!, arguments);
                 }
                 else
                 {
@@ -1309,7 +1340,7 @@ namespace RockLib.Dynamic
                 var genericParameterTypes = new Dictionary<string, Type>();
                 for (int i = 0; i < parameters.Length; i++)
                 {
-                    if (argTypes[i] == null)
+                    if (argTypes[i] is null)
                         continue;
 
                     var genericParameters = GetGenericParameters(parameters[i].ParameterType, argTypes[i]);
@@ -1325,11 +1356,11 @@ namespace RockLib.Dynamic
                     if (parameterType.IsByRef)
                         parameterType = parameterType.GetElementType();
 
-                    if (parameterType.IsGenericParameter || parameterType.IsGenericType)
+                    if (parameterType!.IsGenericParameter || parameterType.IsGenericType)
                         argTypes[i] = CloseGenericType(parameterType, genericParameterTypes);
 
-                    if (argTypes[i] == null)
-                        throw new Exception($"We don't know the closed generic type for '{parameterType.Name}'");
+                    if (argTypes[i] is null)
+                        throw new ArgumentNullException($"We don't know the closed generic type for '{parameterType.Name}'");
 
                     SetArgumentsItem(argsParameter, argTypes, i, argTypes[i], arguments);
                 }
@@ -1344,7 +1375,7 @@ namespace RockLib.Dynamic
                 if (genericParameterTypes.ContainsKey(parameterType.Name))
                     return genericParameterTypes[parameterType.Name];
                 else
-                    throw new Exception($"We don't know the type for a generic argument '{parameterType.Name}'");
+                    throw new ArgumentNullException($"We don't know the type for a generic argument '{parameterType.Name}'");
 
             var genericArguments = parameterType.GetGenericArguments();
             var genericTypeArguments = new Type[genericArguments.Length];
@@ -1377,7 +1408,7 @@ namespace RockLib.Dynamic
 
             if (parameterType.IsValueType)
             {
-                if (argTypes[i] == null)
+                if (argTypes[i] is null)
                 {
                     Debug.Assert(parameterType.IsGenericType
                         && parameterType.GetGenericTypeDefinition() == typeof(Nullable<>));
@@ -1435,9 +1466,9 @@ namespace RockLib.Dynamic
             for (int i = 0; i < args.Length; i++)
             {
                 var universalMemberAccessor = args[i] as UniversalMemberAccessor;
-                if (universalMemberAccessor != null)
+                if (universalMemberAccessor is not null)
                 {
-                    args[i] = universalMemberAccessor._instance;
+                    args[i] = universalMemberAccessor._instance!;
                 }
             }
 
@@ -1448,9 +1479,9 @@ namespace RockLib.Dynamic
         {
             var universalMemberAccessor = instance as UniversalMemberAccessor;
 
-            if (universalMemberAccessor != null)
+            if (universalMemberAccessor is not null)
             {
-                instance = universalMemberAccessor._instance;
+                instance = universalMemberAccessor._instance!;
             }
 
             return instance;
@@ -1459,13 +1490,13 @@ namespace RockLib.Dynamic
         private static bool IsStatic(PropertyInfo propertyInfo)
         {
             var getMethod = propertyInfo.GetGetMethod(true);
-            if (getMethod != null && getMethod.IsStatic)
+            if (getMethod is not null && getMethod.IsStatic)
             {
                 return true;
             }
 
             var setMethod = propertyInfo.GetSetMethod(true);
-            return setMethod != null && setMethod.IsStatic;
+            return setMethod is not null && setMethod.IsStatic;
         }
 
         private class Candidate
@@ -1491,9 +1522,7 @@ namespace RockLib.Dynamic
                     if ((parameters[i].Attributes & HasDefaultValue) == HasDefaultValue)
                     {
                         _defaultParameterTypes[i] =
-                            parameters[i].DefaultValue != null
-                                ? parameters[i].DefaultValue.GetType()
-                                : null;
+                            parameters[i].DefaultValue?.GetType()!;
                         _defaultParameterCount++;
                     }
                 }
@@ -1520,7 +1549,7 @@ namespace RockLib.Dynamic
 
                 for (int i = 0; i < argTypes.Length; i++)
                 {
-                    if (argTypes[i] == null
+                    if (argTypes[i] is null
                         || _parameters[i] == other._parameters[i])
                     {
                         continue;
@@ -1763,7 +1792,7 @@ namespace RockLib.Dynamic
 
                     while (true)
                     {
-                        if (concreteType.BaseType.GetInterfaces().Contains(ancestorType))
+                        if (concreteType.BaseType!.GetInterfaces().Contains(ancestorType))
                         {
                             distance++;
                         }
@@ -1797,12 +1826,12 @@ namespace RockLib.Dynamic
 
                         count++;
 
-                        if (concreteType == typeof(object) || concreteType == null)
+                        if (concreteType == typeof(object) || concreteType is null)
                         {
                             return ushort.MaxValue;
                         }
 
-                        concreteType = concreteType.BaseType;
+                        concreteType = concreteType.BaseType!;
                     }
                 }
 
@@ -1825,14 +1854,14 @@ namespace RockLib.Dynamic
                 {
                     while (true)
                     {
-                        type = type.BaseType;
+                        type = type.BaseType!;
 
                         if (type == ancestorType)
                         {
                             return true;
                         }
 
-                        if (type == typeof(object) || type == null)
+                        if (type == typeof(object) || type is null)
                         {
                             return false;
                         }
@@ -1875,7 +1904,7 @@ namespace RockLib.Dynamic
                 {
                     var argType = argTypes[i];
 
-                    if (argType != null)
+                    if (argType is not null)
                     {
                         if (!CanBeAssigned(_parameters[i], argType, typeArguments))
                         {
@@ -1922,7 +1951,7 @@ namespace RockLib.Dynamic
             // ref and out parameters need to be unwrapped.
             if (targetType.IsByRef)
             {
-                targetType = targetType.GetElementType();
+                targetType = targetType.GetElementType()!;
             }
 
             var typeArgument =
@@ -1931,7 +1960,7 @@ namespace RockLib.Dynamic
                     : null;
 
             return _canBeAssignedCache.GetOrAdd(
-                Tuple.Create(targetType, valueType, typeArgument),
+                Tuple.Create(targetType, valueType, typeArgument!),
                 tuple => GetCanBeAssignedValue(tuple.Item1, tuple.Item2, tuple.Item3));
         }
 
@@ -1958,7 +1987,7 @@ namespace RockLib.Dynamic
                 if (constraints != GenericParameterAttributes.None)
                 {
                     if ((constraints & GenericParameterAttributes.DefaultConstructorConstraint) != 0
-                        && !valueType.IsValueType && valueType.GetConstructor(Type.EmptyTypes) == null)
+                        && !valueType.IsValueType && valueType.GetConstructor(Type.EmptyTypes) is null)
                     {
                         return false;
                     }
@@ -1976,14 +2005,14 @@ namespace RockLib.Dynamic
                     }
                 }
 
-                if (typeArgument != null
+                if (typeArgument is not null
                     && !GetCanNonGenericParameterBeAssignedValue(typeArgument, valueType))
                 {
                     return false;
                 }
 
                 return targetType.GetGenericParameterConstraints()
-                    .All(constraint => GetCanBeAssignedValue(constraint, valueType, typeArgument));
+                    .All(constraint => GetCanBeAssignedValue(constraint, valueType, typeArgument!));
             }
 
             return GetCanNonGenericParameterBeAssignedValue(targetType, valueType);
@@ -2112,19 +2141,14 @@ namespace RockLib.Dynamic
             private readonly Type[] _argTypes;
 
             public CreateInstanceDefinition(Type type, object[] args)
-                : this(type, args.Select(arg =>
-                    arg != null
-                        ? arg is UniversalMemberAccessor
-                            ? ((UniversalMemberAccessor)arg)._instance.GetType()
-                            : arg.GetType()
-                        : null).ToArray())
+                : this(type, args.Select(arg => arg is not null ? (arg is UniversalMemberAccessor ? ((UniversalMemberAccessor)arg)._instance!.GetType() : arg.GetType()) : null).ToArray())
             {
             }
 
-            public CreateInstanceDefinition(Type type, Type[] argTypes)
+            public CreateInstanceDefinition(Type type, Type?[] argTypes)
             {
                 _type = type;
-                _argTypes = argTypes;
+                _argTypes = argTypes!;
             }
 
             public Type Type
@@ -2137,7 +2161,7 @@ namespace RockLib.Dynamic
                 get { return _argTypes; }
             }
 
-            public override bool Equals(object obj)
+            public override bool Equals(object? obj)
             {
                 if (ReferenceEquals(this, obj))
                 {
@@ -2146,7 +2170,7 @@ namespace RockLib.Dynamic
 
                 var other = obj as CreateInstanceDefinition;
 
-                if (other == null
+                if (other is null
                     || !(_type == other._type)
                     || _argTypes.Length != other._argTypes.Length)
                 {
@@ -2162,7 +2186,7 @@ namespace RockLib.Dynamic
                 {
                     var hashCode = _type.GetHashCode();
                     return _argTypes.Aggregate(hashCode, (current, argType) =>
-                        (current * 397) ^ (argType == null ? 0 : argType.GetHashCode()));
+                        (current * 397) ^ (argType is null ? 0 : argType.GetHashCode()));
                 }
             }
         }
@@ -2172,19 +2196,14 @@ namespace RockLib.Dynamic
             private readonly Type _type;
             private readonly string _name;
             private readonly IList<Type> _typeArguments;
-            private readonly Type[] _argTypes;
+            private readonly Type?[] _argTypes;
 
             public InvokeMethodDefinition(Type type, string name, IList<Type> typeArguments, object[] args)
             {
                 _type = type;
                 _name = name;
                 _typeArguments = typeArguments;
-                _argTypes = args.Select(arg =>
-                    arg != null
-                        ? arg is UniversalMemberAccessor
-                            ? ((UniversalMemberAccessor)arg)._instance.GetType()
-                            : arg.GetType()
-                        : null).ToArray();
+                _argTypes = args.Select(arg => arg is not null ? (arg is UniversalMemberAccessor ? ((UniversalMemberAccessor)arg)._instance!.GetType() : arg.GetType()) : null).ToArray();
             }
 
             public Type Type
@@ -2202,12 +2221,12 @@ namespace RockLib.Dynamic
                 get { return _typeArguments; }
             }
 
-            public Type[] ArgTypes
+            public Type?[] ArgTypes
             {
                 get { return _argTypes; }
             }
 
-            public override bool Equals(object obj)
+            public override bool Equals(object? obj)
             {
                 if (ReferenceEquals(this, obj))
                 {
@@ -2216,9 +2235,9 @@ namespace RockLib.Dynamic
 
                 var other = obj as InvokeMethodDefinition;
 
-                if (other == null
+                if (other is null
                     || !(_type == other._type)
-                    || !string.Equals(_name, other._name)
+                    || !string.Equals(_name, other._name, StringComparison.Ordinal)
                     || _typeArguments.Count != other._typeArguments.Count
                     || _argTypes.Length != other._argTypes.Length)
                 {
@@ -2234,19 +2253,23 @@ namespace RockLib.Dynamic
                 unchecked
                 {
                     var hashCode = _type.GetHashCode();
+#if NET48
                     hashCode = (hashCode * 397) ^ _name.GetHashCode();
+#else
+                    hashCode = (hashCode * 397) ^ _name.GetHashCode(StringComparison.Ordinal);
+#endif
                     hashCode = _typeArguments.Aggregate(hashCode, (current, typeArgument) =>
-                        (current * 397) ^ (typeArgument == null ? 0 : typeArgument.GetHashCode()));
+                        (current * 397) ^ (typeArgument is null ? 0 : typeArgument.GetHashCode()));
                     return _argTypes.Aggregate(hashCode, (current, argType) =>
-                        (current * 397) ^ (argType == null ? 0 : argType.GetHashCode()));
+                        (current * 397) ^ (argType is null ? 0 : argType.GetHashCode()));
                 }
             }
         }
 
         private class ReadonlyFields
         {
-            private static readonly int _staticValueType = 1;
-            private static readonly string _staticReferenceType = "A";
+            private const int _staticValueType = 1;
+            private const string _staticReferenceType = "A";
             private readonly int _instanceValueType = 2;
             private readonly string _instanceReferenceType = "B";
 

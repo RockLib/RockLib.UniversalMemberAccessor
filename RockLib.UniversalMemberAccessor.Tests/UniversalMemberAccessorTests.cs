@@ -1,12 +1,13 @@
-﻿using System;
+﻿using FluentAssertions;
+using Microsoft.CSharp.RuntimeBinder;
+using RockLib.Dynamic.UnitTests.TypeCreator;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
-using Microsoft.CSharp.RuntimeBinder;
 using System.Reflection;
-using RockLib.Dynamic.UnitTests.TypeCreator;
 using Xunit;
-using FluentAssertions;
 
 namespace RockLib.Dynamic.UnitTests
 {
@@ -18,8 +19,10 @@ namespace RockLib.Dynamic.UnitTests
             //TODO: This just makes sure nothing blows up, still need to add legit tests.
             var testInstance1 = new HasIndexedProperty();
             var testInstance2 = new Dictionary<string, string> { { "first", "one" }, { "second", "two" }, { "third", "three" } };
-            var testInstance3 = new string[,] { {"one", "two", "three"}, { "two", "three", "four" }, { "three", "four", "five" } };
-            var testInstance4 = new string[] {"one", "two", "three"};
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+            var testInstance3 = new string[,] { { "one", "two", "three" }, { "two", "three", "four" }, { "three", "four", "five" } };
+#pragma warning restore CA1814 // Prefer jagged arrays over multidimensional
+            var testInstance4 = new string[] { "one", "two", "three" };
 
             var unlocked1 = testInstance1.Unlock();
             var unlocked2 = testInstance2.Unlock();
@@ -43,12 +46,18 @@ namespace RockLib.Dynamic.UnitTests
             //NOTE: For now, if we got here, indexing is working as expected.
         }
 
-        public class HasIndexedProperty
+        private class HasIndexedProperty
         {
+            // Disabling for testing purposes
+#pragma warning disable CA1819 // Properties should not return arrays
             public string[] StringArray { get; set; } = { "one", "two", "three" };
+#pragma warning restore CA1819 // Properties should not return arrays
 
-            private string _setStringIndex = null;
+#pragma warning disable CA1805 // Do not initialize unnecessarily
+            private string? _setStringIndex = null;
             private int _setIntIndex = 0;
+#pragma warning restore CA1805 // Do not initialize unnecessarily
+
 
             public string this[string index]
             {
@@ -82,7 +91,7 @@ namespace RockLib.Dynamic.UnitTests
                 }
                 set
                 {
-                    _setIntIndex = int.Parse(value);
+                    _setIntIndex = int.Parse(value, CultureInfo.InvariantCulture.NumberFormat);
                     _setStringIndex = value;
                 }
             }
@@ -150,8 +159,8 @@ namespace RockLib.Dynamic.UnitTests
 
             var instance = Activator.CreateInstance(type);
 
-            object unlock = instance.Unlock();
-            object get = UniversalMemberAccessor.Get(instance);
+            object unlock = instance!.Unlock();
+            object get = UniversalMemberAccessor.Get(instance!);
 
             unlock.Should().BeSameAs(get);
         }
@@ -186,8 +195,8 @@ namespace RockLib.Dynamic.UnitTests
         [Fact]
         public void CannotCallGetStaticWithNullType()
         {
-            Action act = () => UniversalMemberAccessor.GetStatic((Type)null);
-            
+            Action act = () => UniversalMemberAccessor.GetStatic((Type)null!);
+
             act.Should().ThrowExactly<ArgumentNullException>();
         }
 
@@ -254,7 +263,7 @@ namespace RockLib.Dynamic.UnitTests
             var foo = typeof(Foo).Unlock();
 
             Action act = () => _ = foo.Instance;
-            
+
             act.Should().ThrowExactly<RuntimeBinderException>();
         }
 
@@ -264,7 +273,7 @@ namespace RockLib.Dynamic.UnitTests
             var foo = typeof(Foo).Unlock();
 
             Action act = () => _ = foo.Object;
-            
+
             act.Should().ThrowExactly<RuntimeBinderException>();
         }
 
@@ -274,7 +283,7 @@ namespace RockLib.Dynamic.UnitTests
             var foo = typeof(Foo).Unlock();
 
             Action act = () => _ = foo.Value;
-            
+
             act.Should().ThrowExactly<RuntimeBinderException>();
         }
 
@@ -350,7 +359,7 @@ namespace RockLib.Dynamic.UnitTests
             var foo = type.New();
 
             Action act = () => foo.Bar = "abc";
-                
+
             act.Should().ThrowExactly<RuntimeBinderException>().Which.Message.Should().Be(
                 "Cannot implicitly convert type 'System.String' to 'System.Int32'");
         }
@@ -363,7 +372,7 @@ namespace RockLib.Dynamic.UnitTests
             var foo = type.New();
 
             Action act = () => foo._bar = null;
-                
+
             act.Should().ThrowExactly<RuntimeBinderException>().Which.Message.Should().Be(
                 "Cannot convert null to 'System.Int32' because it is a non-nullable value type");
         }
@@ -503,7 +512,7 @@ namespace RockLib.Dynamic.UnitTests
             var foo = new Foo().Unlock();
 
             Action act = () => foo.Bar = (byte)123;
-            
+
             act.Should().NotThrow();
         }
 
@@ -643,8 +652,8 @@ namespace RockLib.Dynamic.UnitTests
             var type = Create.Class("Foo",
                 Define.Constructor(new Parameter(typeof(long), "_long")),
                 Define.Constructor(new Parameter(typeof(short), "_short")),
-                Define.Field("_long", typeof(long), isReadOnly:true),
-                Define.Field("_short", typeof(short), isReadOnly:true));
+                Define.Field("_long", typeof(long), isReadOnly: true),
+                Define.Field("_short", typeof(short), isReadOnly: true));
 
             long longValue;
             short shortValue;
@@ -682,7 +691,7 @@ namespace RockLib.Dynamic.UnitTests
                    Define.Constructor(typeof(Ham)));
 
             Action act = () => type.New(new CountryHam());
-            
+
             act.Should().ThrowExactly<RuntimeBinderException>();
         }
 
@@ -694,7 +703,7 @@ namespace RockLib.Dynamic.UnitTests
             var foo = type.New();
 
             Action act = () => foo.Bar(123, 456);
-                
+
             act.Should().ThrowExactly<RuntimeBinderException>().Which.Message.Should().Be(
                 "No overload for method 'Bar' takes 2 arguments");
         }
@@ -921,7 +930,7 @@ namespace RockLib.Dynamic.UnitTests
 
             var foo = type.New();
 
-            string s = null;
+            string? s = null;
             string dummy = foo.Bar("abc", s);
 
             s.Should().BeNull();
@@ -935,7 +944,7 @@ namespace RockLib.Dynamic.UnitTests
 
             var foo = type.New();
 
-            string s = null;
+            string? s = null;
             string dummy = foo.Bar("abc", s);
 
             s.Should().BeNull();
@@ -956,12 +965,16 @@ namespace RockLib.Dynamic.UnitTests
             result.Should().Be(246);
         }
 
-        public class ComplexMethodWithMixtureOfRefOutAndRegularParameters
+        private class ComplexMethodWithMixtureOfRefOutAndRegularParameters
         {
+#pragma warning disable CA1822 // Mark members as static
             private int Bar(int i, out double d, ref string s)
+#pragma warning restore CA1822 // Mark members as static
             {
                 d = i * 1.5;
-                s += " " + new string(d.ToString().Reverse().ToArray());
+
+                s += " " + new string(d.ToString(CultureInfo.InvariantCulture.NumberFormat).Reverse().ToArray());
+
                 return i * 2;
             }
         }
@@ -1000,7 +1013,7 @@ namespace RockLib.Dynamic.UnitTests
             var foo = type.New();
 
             Action act = () => foo.Bar(new CountryHam());
-            
+
             act.Should().ThrowExactly<RuntimeBinderException>();
         }
 
@@ -1020,7 +1033,6 @@ namespace RockLib.Dynamic.UnitTests
             bar.Should().Be(fieldValue);
         }
 
-#if NET5_0 || NETCOREAPP3_1
         [Fact]
         public void CannotSetReadonlyReferenceTypeStaticField()
         {
@@ -1029,26 +1041,11 @@ namespace RockLib.Dynamic.UnitTests
             var foo = type.Unlock();
 
             Action act = () => foo._bar = "abc";
-                
+
             act.Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
                 "The current runtime does not allow the (illegal) changing of readonly static reference-type fields.");
         }
-#else
-        [Fact]
-        public void CanSetReadonlyReferenceTypeStaticField()
-        {
-            var type = Create.Class("Foo", Define.Field("_bar", typeof(string), true, true));
 
-            var foo = type.Unlock();
-
-            foo._bar = "abc";
-
-            string bar = foo._bar;
-            bar.Should().Be("abc");
-        }
-#endif
-
-#if NET5_0 || NETCOREAPP3_1 || NET462
         [Fact]
         public void CannotSetReadonlyValueTypeStaticField()
         {
@@ -1061,20 +1058,6 @@ namespace RockLib.Dynamic.UnitTests
             act.Should().ThrowExactly<NotSupportedException>().Which.Message.Should().Be(
                 "The current runtime does not allow the (illegal) changing of readonly static value-type fields.");
         }
-#else
-        [Fact]
-        public void CanSetReadonlyValueTypeStaticField()
-        {
-            var type = Create.Class("Foo", Define.Field("_bar", typeof(int), true, true));
-
-            var foo = type.Unlock();
-
-            foo._bar = 123;
-
-            var bar = foo._bar;
-            bar.Should().Be(123);
-        }
-#endif
 
         [Fact]
         public void CanReadFieldWithIllegalCSharpName()
@@ -1109,7 +1092,7 @@ namespace RockLib.Dynamic.UnitTests
 
             int bar;
             Action act = () => bar = foo["<Bar>"];
-            
+
             act.Should().ThrowExactly<RuntimeBinderException>();
         }
 
@@ -1121,13 +1104,13 @@ namespace RockLib.Dynamic.UnitTests
             var foo = type.New();
 
             Action act = () => foo["<Bar>"] = 123;
-            
+
             act.Should().ThrowExactly<RuntimeBinderException>();
         }
 
         [Theory]
         [InlineData(typeof(int), typeof(int))]
-        
+
         [InlineData(typeof(int?), typeof(int))]
         [InlineData(typeof(int?), typeof(byte))]
 
@@ -1206,7 +1189,7 @@ namespace RockLib.Dynamic.UnitTests
             var foo = type.New();
 
             Action act = () => foo.Bar = value;
-            
+
             act.Should().NotThrow();
         }
 
@@ -1217,8 +1200,8 @@ namespace RockLib.Dynamic.UnitTests
 
             var foo = type.New();
 
-            Action act = () => foo.Bar = new int[0];
-            
+            Action act = () => foo.Bar = Array.Empty<int>();
+
             act.Should().NotThrow();
         }
 
@@ -1229,7 +1212,7 @@ namespace RockLib.Dynamic.UnitTests
 
             var foo = type.New();
 
-            Action act = () => foo.Bar = (Action)(() => {});
+            Action act = () => foo.Bar = (Action)(() => { });
 
             act.Should().NotThrow();
         }
@@ -1261,7 +1244,7 @@ namespace RockLib.Dynamic.UnitTests
 
             var foo = type.New();
 
-            Action act = () => foo.Bar = new MyDerived[0];
+            Action act = () => foo.Bar = Array.Empty<MyDerived>();
             act.Should().NotThrow();
         }
 
@@ -1283,7 +1266,7 @@ namespace RockLib.Dynamic.UnitTests
 
             var foo = type.New();
 
-            Action act = () => foo.Bar = (Action<MyBase>)(myBase => {});
+            Action act = () => foo.Bar = (Action<MyBase>)(myBase => { });
             act.Should().NotThrow();
         }
 
@@ -1446,7 +1429,7 @@ namespace RockLib.Dynamic.UnitTests
             var quxFactory = typeof(Qux).Unlock();
 
             Action act = () => quxFactory.CreateInstance("wrong", "args");
-            
+
             act.Should().ThrowExactly<RuntimeBinderException>();
         }
 
@@ -1728,7 +1711,7 @@ namespace RockLib.Dynamic.UnitTests
 
             var candidate = candidateFactory.New(constructor);
 
-            bool isLegal = candidate.IsLegal(new Type[0], Type.EmptyTypes);
+            bool isLegal = candidate.IsLegal(Array.Empty<Type>(), Type.EmptyTypes);
 
             isLegal.Should().BeFalse();
         }
@@ -1793,7 +1776,10 @@ namespace RockLib.Dynamic.UnitTests
             isLegal.Should().BeTrue();
         }
 
+#pragma warning disable CA1822 // Mark members as static
+#pragma warning disable xUnit1013 // Public method should be marked as test
         public void Generic<T>(T t)
+#pragma warning restore CA1822 // Mark members as static
         {
         }
 
@@ -1811,7 +1797,9 @@ namespace RockLib.Dynamic.UnitTests
             isLegal.Should().BeFalse();
         }
 
+#pragma warning disable CA1822 // Mark members as static
         public void NewConstraint<T>(T t)
+#pragma warning restore CA1822 // Mark members as static
             where T : new()
         {
         }
@@ -1900,7 +1888,9 @@ namespace RockLib.Dynamic.UnitTests
             isLegal.Should().BeFalse();
         }
 
+#pragma warning disable CA1822 // Mark members as static
         public void ClassConstraint<T>(T t)
+#pragma warning restore CA1822 // Mark members as static
             where T : class
         {
         }
@@ -1961,7 +1951,9 @@ namespace RockLib.Dynamic.UnitTests
             isLegal.Should().BeFalse();
         }
 
+#pragma warning disable CA1822 // Mark members as static
         public void StructConstraint<T>(T t)
+#pragma warning restore CA1822 // Mark members as static
             where T : struct
         {
         }
@@ -2022,7 +2014,9 @@ namespace RockLib.Dynamic.UnitTests
             isLegal.Should().BeFalse();
         }
 
+#pragma warning disable CA1822 // Mark members as static
         public void BaseClassContraint<THam>(THam tHam)
+#pragma warning restore CA1822 // Mark members as static
             where THam : Ham
         {
         }
@@ -2083,7 +2077,9 @@ namespace RockLib.Dynamic.UnitTests
             isLegal.Should().BeFalse();
         }
 
+#pragma warning disable CA1822 // Mark members as static
         public void InterfaceContraint<THam>(THam tHam)
+#pragma warning restore CA1822 // Mark members as static
             where THam : IHam
         {
         }
@@ -2144,7 +2140,9 @@ namespace RockLib.Dynamic.UnitTests
             isLegal.Should().BeFalse();
         }
 
+#pragma warning disable CA1822 // Mark members as static
         public void TypeParameterContraint<TBase, TDerived>(TBase tBase, TDerived tDerived)
+#pragma warning restore CA1822 // Mark members as static
             where TDerived : TBase
         {
         }
@@ -2215,8 +2213,8 @@ namespace RockLib.Dynamic.UnitTests
                 Define.Constructor(
                     new Parameter(typeof(object), "_baz"),
                     new Parameter(-1, typeof(int))),
-                Define.AutoProperty("Bar", typeof(string), backingFieldName:"_bar"),
-                Define.AutoProperty("Baz", typeof(object), backingFieldName:"_baz"));
+                Define.AutoProperty("Bar", typeof(string), backingFieldName: "_bar"),
+                Define.AutoProperty("Baz", typeof(object), backingFieldName: "_baz"));
 
             object parameter = "abc";
             var foo1 = type.New(parameter);
@@ -2224,7 +2222,7 @@ namespace RockLib.Dynamic.UnitTests
             ((object)foo1.Bar).Should().Be(parameter);
             ((object)foo1.Baz).Should().BeNull();
 
-            parameter = 123.45; 
+            parameter = 123.45;
             var foo2 = type.New(parameter);
 
             ((object)foo2.Bar).Should().BeNull();
@@ -2336,7 +2334,7 @@ namespace RockLib.Dynamic.UnitTests
 
             act = () => unlockedSpam.PrivateFoo(new Pork());
             act.Should().NotThrow();
-         
+
             act = () => unlockedSpam.PrivateFoo(new BadActor());
             act.Should().NotThrow();
         }
@@ -3009,7 +3007,7 @@ namespace RockLib.Dynamic.UnitTests
             var garplyT2 = new SimpleObject1();
             var garplyT3 = new SimpleObject2();
             var garplyT4 = new Func<SimpleObject1, SimpleObject2, string>(
-                (one, two) => one == null || two == null
+                (one, two) => one is null || two is null
                     ? "Not Enough Info"
                     : "Had Enough Info");
 
@@ -3046,7 +3044,7 @@ namespace RockLib.Dynamic.UnitTests
             DateTime? garplyT2 = new DateTime(2020, 2, 1);
             int? garplyT3 = 100;
             var garplyT4 = new Func<DateTime?, int?, string>(
-                (date, offset) => date == null || offset == null
+                (date, offset) => date is null || offset is null
                     ? "Not Enough Info"
                     : date.Value.AddDays(offset.Value).ToShortDateString());
 
@@ -3061,7 +3059,9 @@ namespace RockLib.Dynamic.UnitTests
         private class BaseClassWithPrivateMembers
         {
             private int _foo = 1;
+#pragma warning disable CA1822 // Mark members as static
             private string Bar() => "abc";
+#pragma warning restore CA1822 // Mark members as static
             private double Baz { get; set; } = 123.45;
 
             public int GetBaseFoo() => _foo;
@@ -3076,7 +3076,9 @@ namespace RockLib.Dynamic.UnitTests
         private class BaseClassWithConflictingPrivateMembers
         {
             private int _foo = 1;
+#pragma warning disable CA1822 // Mark members as static
             private string Bar() => "abc";
+#pragma warning restore CA1822 // Mark members as static
             private double Baz { get; set; } = 123.45;
 
             public int GetBaseFoo() => _foo;
@@ -3087,7 +3089,9 @@ namespace RockLib.Dynamic.UnitTests
         private class DerivedClassWithConflictingPrivateMembers : BaseClassWithConflictingPrivateMembers
         {
             private int _foo = 2;
+#pragma warning disable CA1822 // Mark members as static
             private string Bar() => "xyz";
+#pragma warning restore CA1822 // Mark members as static
             private double Baz { get; set; } = 987.65;
 
             public int GetDerivedFoo() => _foo;
@@ -3095,25 +3099,29 @@ namespace RockLib.Dynamic.UnitTests
             public double GetDerivedBaz() => Baz;
         }
 
-        public class GenericFoo
+        private class GenericFoo
         {
-            public T Bar<T>(string s, T t)
+            public static T Bar<T>(string s, T t)
             {
                 return t;
             }
 
+#pragma warning disable CA1822 // Mark members as static
             public T Baz<T>() where T : new()
             {
                 return new T();
             }
 
             public T Qux<T>(string s, T tIn, ref T tOut)
+#pragma warning restore CA1822 // Mark members as static
             {
                 tOut = tIn;
                 return tIn;
             }
         }
 
+#pragma warning disable CA1034 // Nested types should not be visible
+#pragma warning disable CA1040 // Avoid empty interfaces
         public interface IPork { }
         public interface IHam : IPork { }
         public interface ICountryHam : IHam { }
@@ -3124,28 +3132,34 @@ namespace RockLib.Dynamic.UnitTests
 
         public class BadActor : IHam { }
         public class Prosciutto : ICountryHam { }
+#pragma warning restore CA1040 // Avoid empty interfaces
+#pragma warning restore CA1034 // Nested types should not be visible
 
-        public class Spam
+        private class Spam
         {
-            private string PrivateFoo(Pork pork) { return null; }
-            private string PrivateFoo(IHam ham) { return null; }
-            public string PublicFoo(Pork pork) { return null; }
-            public string PublicFoo(IHam ham) { return null; }
+#pragma warning disable CA1822 // Mark members as static
+            private string? PrivateFoo(Pork pork) { return null; }
+            private string? PrivateFoo(IHam ham) { return null; }
+            public string? PublicFoo(Pork pork) { return null; }
+            public string? PublicFoo(IHam ham) { return null; }
 
-            private string PrivateBar(ICountryHam countryHam) { return null; }
-            private string PrivateBar(Ham ham) { return null; }
-            public string PublicBar(ICountryHam countryHam) { return null; }
-            public string PublicBar(Ham ham) { return null; }
+            private string? PrivateBar(ICountryHam countryHam) { return null; }
+            private string? PrivateBar(Ham ham) { return null; }
+            public string? PublicBar(ICountryHam countryHam) { return null; }
+            public string? PublicBar(Ham ham) { return null; }
+#pragma warning restore CA1822 // Mark members as static
         }
 
-        public class Lard
+        private class Lard
         {
             public Lard(bool gross)
             {
             }
         }
 
-        public class Bacon : Lard
+#pragma warning disable CA1812 // Avoid uninstantiated internal classes 
+        private class Bacon : Lard
+#pragma warning restore CA1812 // Avoid uninstantiated internal classes
         {
             public Bacon()
                 : base(false)
@@ -3180,6 +3194,7 @@ namespace RockLib.Dynamic.UnitTests
             _baz = -1;
         }
 
+#pragma warning disable CA1822 // Mark members as static
         private string Qux(int i, string s)
         {
             return "Qux(int i, string s)";
@@ -3226,18 +3241,23 @@ namespace RockLib.Dynamic.UnitTests
         public void Fred(Baz b)
         {
         }
+#pragma warning restore CA1822 // Mark members as static
+
     }
 
     public class Bar
     {
-        private event EventHandler Foo;
-        private static event EventHandler Baz;
-        public event EventHandler Qux;
-        
+        private event EventHandler? Foo;
+        private static event EventHandler? Baz;
+#pragma warning disable CS0067 // The event is never used
+        public event EventHandler? Qux;
+#pragma warning restore CS0067 // The event is never used
+
+
         public void InvokeFoo()
         {
             var handler = Foo;
-            if (handler != null)
+            if (handler is not null)
             {
                 handler(this, EventArgs.Empty);
             }
@@ -3246,14 +3266,16 @@ namespace RockLib.Dynamic.UnitTests
         public static void InvokeBaz()
         {
             var handler = Baz;
-            if (handler != null)
+            if (handler is not null)
             {
                 handler(null, EventArgs.Empty);
             }
         }
     }
 
+#pragma warning disable CA1040 // Avoid empty interfaces
     public interface IBaz
+#pragma warning restore CA1040 // Avoid empty interfaces
     {
     }
 
@@ -3274,22 +3296,15 @@ namespace RockLib.Dynamic.UnitTests
 
     public class Garply
     {
+#pragma warning disable CA1051 // Do not declare visible instance fields
         public readonly string Value;
+#pragma warning restore CA1051 // Do not declare visible instance fields
 
-        private Garply()
-        {
-            Value = "Garply()";
-        }
+        private Garply() => Value = "Garply()";
 
-        private Garply(int i)
-        {
-            Value = "Garply(int i)";
-        }
+        private Garply(int i) => Value = "Garply(int i)";
 
-        private Garply(string s)
-        {
-            Value = "Garply(string s)";
-        }
+        private Garply(string s) => Value = "Garply(string s)";
     }
 
     public static class Grault
@@ -3298,8 +3313,17 @@ namespace RockLib.Dynamic.UnitTests
 
     public class Waldo
     {
-        private EventHandler _foo = FooHandler;
+#pragma warning disable CA1823 // Avoid unused private fields
+        private EventHandler? _foo = FooHandler!;
+#pragma warning disable IDE0051 // Remove unused private members
+#pragma warning disable IDE0044 // Add readonly modifier
+#pragma warning disable CS0169 // Field is never used
         private Wobble _wobble;
+#pragma warning restore CS0169 // Field is never used
+#pragma warning restore IDE0044 // Add readonly modifier
+#pragma warning restore IDE0051 // Remove unused private members
+#pragma warning restore CA1823 // Avoid unused private fields
+
 
         public enum Wobble
         {
@@ -3312,11 +3336,15 @@ namespace RockLib.Dynamic.UnitTests
         }
     }
 
+#pragma warning disable CA1716 // Identifiers should not match keywords
     public class MyBase
+#pragma warning restore CA1716 // Identifiers should not match keywords
     {
     }
 
+#pragma warning disable CA1040 // Avoid empty interfaces
     public interface IMyInterface
+#pragma warning restore CA1040 // Avoid empty interfaces
     {
     }
 
@@ -3324,7 +3352,9 @@ namespace RockLib.Dynamic.UnitTests
     {
     }
 
+#pragma warning disable CA1711 // Identifiers should not have incorrect suffix
     public enum MyEnum
+#pragma warning restore CA1711 // Identifiers should not have incorrect suffix
     {
         First
     }
@@ -3335,7 +3365,7 @@ namespace RockLib.Dynamic.UnitTests
         public int GetHashCodeInvocations { get; private set; }
         public int ToStringInvocations { get; private set; }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             EqualsInvocations++;
             return base.Equals(obj);
@@ -3350,12 +3380,13 @@ namespace RockLib.Dynamic.UnitTests
         public override string ToString()
         {
             ToStringInvocations++;
-            return base.ToString();
+            return base.ToString()!;
         }
     }
 
     public class NonGenericFoo
     {
+#pragma warning disable CA1822 // Mark members as static
         private T Bar1<T>(T t) => t;
         private Lazy<T> Baz1<T>(Lazy<T> lazyOfT) => lazyOfT;
         private Func<Lazy<T>> Qux1<T>(Func<Lazy<T>> funcOfLazyOfT) => funcOfLazyOfT;
@@ -3366,7 +3397,8 @@ namespace RockLib.Dynamic.UnitTests
         private Tuple<Lazy<T>, Lazy<U>> Baz2Reversed<T, U>(Lazy<U> lazyOfU, Lazy<T> lazyOfT) => Tuple.Create(lazyOfT, lazyOfU);
         private Tuple<Func<Lazy<T>>, Func<Lazy<U>>> Qux2Reversed<T, U>(Func<Lazy<U>> funcOfLazyOfU, Func<Lazy<T>> funcOfLazyOfT) => Tuple.Create(funcOfLazyOfT, funcOfLazyOfU);
         private Tuple<T, Lazy<T>, Func<T>, Lazy<Func<T>>> Grault<T>(T t1, Lazy<T> t2, Func<T> t3, Lazy<Func<T>> t4) => Tuple.Create(t1, t2, t3, t4);
-        private Tuple<T, U, V, Func<V,T,U>> Garply<T, U, V>(U t1, V t2, T t3, Func<V,T,U> t4) => Tuple.Create(t3, t1, t2, t4);
+        private Tuple<T, U, V, Func<V, T, U>> Garply<T, U, V>(U t1, V t2, T t3, Func<V, T, U> t4) => Tuple.Create(t3, t1, t2, t4);
+#pragma warning restore CA1822 // Mark members as static
     }
 
     public class SimpleObject1
