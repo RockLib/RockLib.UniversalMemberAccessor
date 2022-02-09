@@ -8,12 +8,20 @@ PM> Install-Package RockLib.UniversalMemberAccessor
 
 ## Table of Contents
 
+- [Supported Targets](#supported-targets)
 - [Overview](#overview)
   - [TL;DR](#tldr)
 - [UniversalMemberAccessor Class](#universalmemberaccessor-class)
 - [Extension methods](#extension-methods)
 - [Pseudo-members](#pseudo-members)
 - [Uses Cases](#use-cases)
+
+### Supported Targets
+
+ This library supports the following targets:
+   - .NET 6
+   - .NET Core 3.1
+   - .NET Framework 4.8
 
 ### Overview
 

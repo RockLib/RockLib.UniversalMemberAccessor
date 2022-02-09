@@ -311,17 +311,13 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
-#if NET48
         public override bool TryGetMember(GetMemberBinder binder, out object? result)
         {
             if (binder is null)
             {
                 throw new ArgumentNullException(nameof(binder));
             }
-#else
-        public override bool TryGetMember([NotNull] GetMemberBinder binder, out object? result)
-        {
-#endif
+
             Func<object, object> getMember;
 
             if (!TryGetGetMemberFunc(binder.Name, out getMember))
@@ -373,17 +369,13 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
-#if NET48
         public override bool TrySetMember(SetMemberBinder binder, object? value)
         {
             if (binder is null)
             {
                 throw new ArgumentNullException(nameof(binder));
             }
-#else
-        public override bool TrySetMember([NotNull] SetMemberBinder binder, object? value)
-        {
-#endif
+
             Action<object, object> setMember;
             var valueType = GetValueType(value);
 
@@ -424,7 +416,6 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false. If this method returns false, the run-time binder of the language determines the behavior. (In most cases, a language-specific run-time exception is thrown.)
         /// </returns>
-#if NET48
         public override bool TryInvokeMember(
             InvokeMemberBinder binder,
             object?[]? args,
@@ -434,13 +425,7 @@ namespace RockLib.Dynamic
             {
                 throw new ArgumentNullException(nameof(binder));
             }
-#else
-        public override bool TryInvokeMember(
-            [NotNull] InvokeMemberBinder binder,
-            object?[]? args,
-            out object? result)
-        {
-#endif
+
             var typeArguments = _getCSharpTypeArguments(binder);
 
             var invokeMethodFunc = _invokeMethodFuncs.GetOrAdd(
@@ -519,7 +504,6 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
-#if NET48
         public override bool TryGetIndex(
             GetIndexBinder binder,
             object[] indexes,
@@ -529,13 +513,7 @@ namespace RockLib.Dynamic
             {
                 throw new ArgumentNullException(nameof(indexes));
             }
-#else
-        public override bool TryGetIndex(
-            GetIndexBinder binder,
-            [NotNull] object[] indexes,
-            out object? result)
-        {
-#endif
+
             if (indexes.Length == 1
                 && indexes[0] is string)
             {
@@ -599,7 +577,6 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
-#if NET48
         public override bool TrySetIndex(
             SetIndexBinder binder,
             object[] indexes,
@@ -609,13 +586,7 @@ namespace RockLib.Dynamic
             {
                 throw new ArgumentNullException(nameof(indexes));
             }
-#else
-        public override bool TrySetIndex(
-            SetIndexBinder binder,
-            [NotNull] object[] indexes,
-            object? value)
-        {
-#endif
+
             if (indexes.Length == 1
                 && indexes[0] is string)
             {
@@ -679,7 +650,6 @@ namespace RockLib.Dynamic
         /// <returns>
         /// true if the operation is successful; otherwise, false.
         /// </returns>
-#if NET48
         public override bool TryConvert(
             ConvertBinder binder,
             out object result)
@@ -688,12 +658,7 @@ namespace RockLib.Dynamic
             {
                 throw new ArgumentNullException(nameof(binder));
             }
-#else
-        public override bool TryConvert(
-            [NotNull] ConvertBinder binder,
-            out object result)
-        {
-#endif
+
             if (!binder.ReturnType.IsAssignableFrom(_type))
             {
                 throw new RuntimeBinderException($"Cannot implicitly convert type '{_type}' to '{binder.ReturnType}'");
