@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -512,7 +512,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
             {
                 var nestedTypeBuilder = tb.DefineNestedType(name, typeAttributes, baseType, interfaces);
 
-                var nestedFields = new List<FieldBuilder>();
+                var nestedFields = new Collection<FieldBuilder>();
 
                 foreach (var definition in memberDefinitions.OrderBy(d => d is ConstructorDefinition))
                 {
