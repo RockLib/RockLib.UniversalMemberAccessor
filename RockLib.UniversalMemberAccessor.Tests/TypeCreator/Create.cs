@@ -1,5 +1,5 @@
 using System;
-using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -73,7 +73,7 @@ namespace RockLib.Dynamic.UnitTests.TypeCreator
 
             var typeBuilder = moduleBuilder.DefineType(name, typeAttributes, baseType, interfaces);
 
-            var fields = new List<FieldBuilder>();
+            var fields = new Collection<FieldBuilder>();
 
             foreach (var definition in memberDefinitions.OrderBy(d => d is ConstructorDefinition))
             {
