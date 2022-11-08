@@ -1,4 +1,4 @@
-# RockLib.UniversalMemberAccessor [![Build status](https://ci.appveyor.com/api/projects/status/5fiuw7n89d8qubf1?svg=true)](https://ci.appveyor.com/project/RockLib/rocklib-universalmemberaccessor)
+# RockLib.UniversalMemberAccessor
 
 *Defines a dynamic proxy object that enables easy access to non-public members.*
 
@@ -16,18 +16,18 @@ PM> Install-Package RockLib.UniversalMemberAccessor
 - [Pseudo-members](#pseudo-members)
 - [Uses Cases](#use-cases)
 
-### Supported Targets
+## Supported Targets
 
  This library supports the following targets:
    - .NET 6
    - .NET Core 3.1
    - .NET Framework 4.8
 
-### Overview
+## Overview
 
 Have you ever needed to access the non-public members of a class?
 
-Maybe you need to test some class's private method - you could make the method internal and add an `[InternalsVisibleTo("Your.Test.Assembly")]` attribute. But that's annoying to have to do this and you don't really it to be internal - you just want to test it. 
+Maybe you need to test some class's private method - you could make the method internal and add an `[InternalsVisibleTo("Your.Test.Assembly")]` attribute. But that's annoying to have to do this and you don't really it to be internal - you just want to test it.
 
 Perhaps a third-party library that you depend on doesn't expose a field that you need. When you debug your application, and you can see the field you need under 'Non-Public Members', but there's no corresponding public property. You could use reflection to access the private field, but that API is awkward and verbose and slow.
 
@@ -35,7 +35,7 @@ There are other non-public members that you need to access: fields, properties, 
 
 Wouldn't it be great if you could just pretend that everything was public? With `dynamic`, you *almost* can.
 
-```c#
+```csharp
 using System;
 
 public class Foo
@@ -55,7 +55,7 @@ void Main()
 
 This compiles and starts to run. But it throws a run-time exception when trying to set the private field because the DLR forbids access to non-visible members. However, with one small change, it works.
 
-```c#
+```csharp
 using RockLib.Dynamic;
 using System;
 
@@ -74,15 +74,15 @@ void Main()
 }
 ```
 
-#### TL;DR
+### TL;DR
 
 UniversalMemberAccessor lets you pretend everything is public.
 
-### UniversalMemberAccessor Class
+## UniversalMemberAccessor Class
 
 The main class that this package exposes is `RockLib.UniversalMemberAccessor` - all public methods in the package return an instance of this class. It inherits from [`System.Dynamic.DynamicObject`](https://msdn.microsoft.com/en-us/library/system.dynamic.dynamicobject.aspx) and is meant to be used as a variable of type `dynamic`. When used this way, an instance of this class allows you to call non-public members with the same syntax as if they were public. The following example demonstrates most of the basic functionality of the library:
 
-```c#
+```csharp
 using RockLib.UniversalMemeberAccessor;
 using System;
 
@@ -134,7 +134,7 @@ Some concepts are not easily represented with a proxy object, such as invoking a
 
 This pseudo-method invokes a constructor of the proxy object's type. There are four names: `New`, `Create`, `NewInstance`, and `CreateInstance`.
 
-```c#
+```csharp
 public class Foo
 {
     private Foo(int bar, string baz) { }
@@ -153,7 +153,7 @@ void Main()
 
 This pseudo-property returns the underlying object of the dynamic proxy, i.e. the object that the `Unlock` extension method was called on. It has three names: `Instance`, `Object`, and `Value`.
 
-```c#
+```csharp
 public class Foo
 {
     private Foo()
@@ -168,7 +168,7 @@ public void Bar(Foo foo)
 void Main()
 {
     var foo = typeof(Foo).New();
-    
+
     Bar(foo.Instance);
     Bar(foo.Object);
     Bar(foo.Value);
@@ -179,7 +179,7 @@ void Main()
 
 This pseudo-property returns the a dynamic proxy that unlocks the same object that the current dynamic proxy unlocks, except from the perspective of the base type of the current dynamic proxy's type. This allows access to the private members of a type's base type. It has three names: `Base`, `BaseType`, and `BaseClass`.
 
-```c#
+```csharp
 public abstract class FooBase
 {
     private void Bar(string baz) => Console.WriteLine($"Yes, call me. {baz}");
@@ -207,7 +207,7 @@ void Main()
 
 Solution: Add a using for "RockLib.Dynamic" and call the `Unlock()` extension method on the instance.
 
-```c#
+```csharp
 dynamic proxy = someObject.Unlock();
 // TODO: Use the proxy instance to access someObject's non-public members
 ```
@@ -218,7 +218,7 @@ dynamic proxy = someObject.Unlock();
 
 Solution: Add a using for "RockLib.Dynamic" and call the `Unlock()` extension method on the type.
 
-```c#
+```csharp
 dynamic proxy = someType.Unlock();
 // TODO: Use the proxy instance to access the static members of the someType type
 ```
@@ -227,9 +227,9 @@ dynamic proxy = someType.Unlock();
 
 *Problem: You need to invoke the non-public constructor of a `System.Type`.*
 
-Solution: Add a using for "RockLib.Dynamic" and call the `New()` extension method on the type. The extension method has a `params object[]` parameter 
+Solution: Add a using for "RockLib.Dynamic" and call the `New()` extension method on the type. The extension method has a `params object[]` parameter.
 
-```c#
+```csharp
 public class Foo
 {
     private Foo(int bar, string baz) { }
@@ -243,7 +243,7 @@ void Main()
 
 Alternate Solution: Call the `Unlock()` extension method on the type, then call the [`New` pseudo-method](#new-pseudo-method) with the constructor's parameters.
 
-```c#
+```csharp
 public class Foo
 {
     private Foo(int bar, string baz) { }
@@ -283,7 +283,7 @@ void Main()
 
     // Access the Baz type and call the New pseudo-method on it.
     dynamic baz = foo.Baz.New(123);
-    
+
     foo.Bar(baz);
 }
 ```
@@ -355,5 +355,3 @@ void Main()
     Bar((Foo)foo);
 }
 ```
-
----
