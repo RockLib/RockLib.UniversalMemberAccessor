@@ -32,7 +32,7 @@ PM> Install-Package RockLib.UniversalMemberAccessor
 
 ## Supported Targets
 
- This library supports the following targets: 
+ This library supports the following targets:
    - .NET 6
    - .NET Core 3.1
    - .NET Framework 4.8
