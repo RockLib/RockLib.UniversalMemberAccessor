@@ -1,4 +1,8 @@
-# **RockLib.UniversalMemberAccessor Deprecation**
+# :warning: Deprecation Warning :warning:
+
+This library has been deprecated and will no longer receive updates.
+
+---
 
 RockLib has been a cornerstone of our open source efforts here at Rocket Mortgage, and it's played a significant role in our journey to drive innovation and collaboration within our organization and the open source community. It's been amazing to witness the collective creativity and hard work that you all have poured into this project.
 
@@ -6,7 +10,9 @@ However, as technology relentlessly evolves, so must we. The decision to depreca
 
 We want to express our heartfelt thanks to all the contributors and users who have been a part of this incredible journey. Your contributions, feedback, and enthusiasm have been invaluable, and we are genuinely grateful for your dedication. 🚀
 
-# RockLib.UniversalMemberAccessor
+---
+
+## RockLib.UniversalMemberAccessor
 
 *Defines a dynamic proxy object that enables easy access to non-public members.*
 
@@ -39,7 +45,7 @@ Maybe you need to test some class's private method - you could make the method i
 
 Perhaps a third-party library that you depend on doesn't expose a field that you need. When you debug your application, and you can see the field you need under 'Non-Public Members', but there's no corresponding public property. You could use reflection to access the private field, but that API is awkward and verbose and slow.
 
-There are other non-public members that you need to access: fields, properties, methods, constructors, or events. What about internal types? Or nested, non-public types? Each of these things is incresingly difficult to work with when using .NET's reflection API.
+There are other non-public members that you need to access: fields, properties, methods, constructors, or events. What about internal types? Or nested, non-public types? Each of these things is increasingly difficult to work with when using .NET's reflection API.
 
 Wouldn't it be great if you could just pretend that everything was public? With `dynamic`, you *almost* can.
 
